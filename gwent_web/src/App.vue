@@ -515,9 +515,9 @@ function syncView() {
     target.faction = pl.faction;
     target.leader_id = pl.leader_id;
     target.leaderAvailable = engine.isLeaderAvailable(pIdx);
-    target.hand = pl.hand.map((inst) => ({ ...inst, card: CARDS_BY_IDX[inst.card_idx] }));
+    target.hand = pl.hand.map((inst) => markRaw({ ...inst, card: CARDS_BY_IDX[inst.card_idx] }));
     target.deck = pl.deck.slice();
-    target.graveyard = pl.graveyard.map((inst) => ({ ...inst, card: CARDS_BY_IDX[inst.card_idx] }));
+    target.graveyard = pl.graveyard.map((inst) => markRaw({ ...inst, card: CARDS_BY_IDX[inst.card_idx] }));
     target.mulligan_left = pl.mulligan_left;
     target.passed = pl.passed;
 
@@ -526,11 +526,13 @@ function syncView() {
       const wActive = engine.weather[WEATHER_FOR_ROW[r]];
       const { powers, hornActive } = computeRowPowers(pl.rows[r], hasHorn, wActive, engine.double_spy);
       target.rowFlags[r] = { hornActive, wActive };
-      target.computedRows[r] = pl.rows[r].map((inst, idx) => ({
-        ...inst,
-        card: CARDS_BY_IDX[inst.card_idx],
-        power: powers[idx],
-      }));
+      target.computedRows[r] = pl.rows[r].map((inst, idx) =>
+        markRaw({
+          ...inst,
+          card: CARDS_BY_IDX[inst.card_idx],
+          power: powers[idx],
+        })
+      );
     }
   }
 }

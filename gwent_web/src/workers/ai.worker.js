@@ -28,13 +28,41 @@ async function getOnnxSession(modelUrl) {
   return sess;
 }
 
+let cachedEngine = null;
+let cachedSeed = null;
+let cachedPreset0 = null;
+let cachedPreset1 = null;
+let cachedHistory = [];
+
 function reconstructEngine(payload) {
-  const eng = new GwentEngine(payload.seed, payload.preset0, payload.preset1);
-  for (const act of payload.actionHistory || []) {
-    if (eng.done) break;
-    eng.step(act);
+  const history = payload.actionHistory || [];
+  const canReuse =
+    cachedEngine !== null &&
+    cachedSeed === payload.seed &&
+    cachedPreset0 === payload.preset0 &&
+    cachedPreset1 === payload.preset1 &&
+    history.length >= cachedHistory.length &&
+    cachedHistory.every((a, idx) => a === history[idx]);
+
+  if (canReuse) {
+    // Incrementally step only newly appended actions (O(1) per move instead of O(N^2) total replay)
+    for (let i = cachedHistory.length; i < history.length; i++) {
+      if (cachedEngine.done) break;
+      cachedEngine.step(history[i]);
+    }
+  } else {
+    // New game, reset, or branch: initialize fresh engine
+    cachedEngine = new GwentEngine(payload.seed, payload.preset0, payload.preset1);
+    cachedSeed = payload.seed;
+    cachedPreset0 = payload.preset0;
+    cachedPreset1 = payload.preset1;
+    for (const act of history) {
+      if (cachedEngine.done) break;
+      cachedEngine.step(act);
+    }
   }
-  return eng;
+  cachedHistory = history.slice();
+  return cachedEngine;
 }
 
 function evaluateHeuristicDistribution(eng, difficulty = 'hard') {

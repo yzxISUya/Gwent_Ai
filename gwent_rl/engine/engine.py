@@ -503,6 +503,10 @@ class GwentEngine:
         cid = cdata["id"]
 
         if cid == "decoy":
+            # Architectural Decision (ADR): Decoy directly routes to graveyard on play rather than
+            # occupying a board slot as a 0-power placeholder. This simplifies state representation,
+            # prevents accidental Monsters-passive retention or board overcrowding, while preserving
+            # the core mechanic (picking up a friendly non-hero unit/spy back to hand).
             pl.graveyard.append(inst)
             self.sub_phase = "DECOY"
             self._recompute_scores()

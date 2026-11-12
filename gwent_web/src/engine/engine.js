@@ -4,187 +4,35 @@
  * and 689-dim Float32 Observation Vector to `gwent_rl/engine/engine.py`.
  */
 
-import cardsJson from '../../../shared/data/cards.json' with { type: 'json' };
-import leadersJson from '../../../shared/data/leaders.json' with { type: 'json' };
-import factionsJson from '../../../shared/data/factions.json' with { type: 'json' };
-import presetsJson from '../../../shared/data/presets.json' with { type: 'json' };
-import schemaJson from '../../../shared/spec/schema.json' with { type: 'json' };
+import {
+  ROW_KEYS,
+  WEATHER_FOR_ROW,
+  STARTING_HAND,
+  MULLIGAN_MAX,
+  STARTING_GEMS,
+  MAX_ROUNDS,
+  SCHEMA,
+  NUM_CARDS,
+  NUM_LEADERS,
+  ACTION_DIM,
+  HORN_ROW_OFFSET,
+  USE_LEADER_ACTION,
+  PASS_ACTION,
+  OBS_DIM,
+  FACTION_TO_IDX,
+  CARDS_BY_ID,
+  CARDS_BY_IDX,
+  LEADERS_BY_ID,
+  LEADERS_BY_IDX,
+  FACTIONS_BY_ID,
+  PRESET_LIST,
+  PRESETS_BY_ID,
+  expandPresetDeck,
+} from './data.js';
 
-export const ROW_KEYS = ['close', 'ranged', 'siege'];
-export const WEATHER_FOR_ROW = { close: 'frost', ranged: 'fog', siege: 'rain' };
-export const STARTING_HAND = 10;
-export const MULLIGAN_MAX = 2;
-export const STARTING_GEMS = 2;
-export const MAX_ROUNDS = 3;
-
-export const SCHEMA = schemaJson;
-export const NUM_CARDS = SCHEMA.numCards;
-export const NUM_LEADERS = SCHEMA.numLeaders;
-export const ACTION_DIM = SCHEMA.actionSpace.totalDim;
-export const HORN_ROW_OFFSET = SCHEMA.actionSpace.hornRowOffset;
-export const USE_LEADER_ACTION = SCHEMA.actionSpace.useLeaderAction;
-export const PASS_ACTION = SCHEMA.actionSpace.passOrFinishAction;
-export const OBS_DIM = 51 + 36 + 7 * NUM_CARDS;
-
-export const FACTION_TO_IDX = {};
-SCHEMA.factions.forEach((fid, i) => {
-  FACTION_TO_IDX[fid] = i;
-});
-
-export const CARDS_BY_ID = {};
-export const CARDS_BY_IDX = new Array(NUM_CARDS);
-for (const [cid, raw] of Object.entries(cardsJson)) {
-  const c = structuredClone(raw);
-  const abMap = {};
-  for (const a of c.abilities || []) abMap[a.id] = a;
-  c._ab_map = abMap;
-  c._is_unit = c.type === 'unit';
-  c._is_hero = !!c.hero;
-  c._is_spy = 'spy' in abMap;
-  c._is_medic = 'medic' in abMap;
-  c._is_bond = 'bond' in abMap;
-  c._is_morale = 'morale' in abMap;
-  c._is_horn_unit = c._is_unit && ('horn' in abMap);
-  c._is_muster = 'muster' in abMap;
-  c._muster_targets = new Set(abMap.muster?.targets || []);
-  c._muster_from_hand = (abMap.muster?.from || ['deck']).includes('hand');
-  c._primary_row = c.rows?.[0] || null;
-  c._weather_kind = abMap.weather?.weather || null;
-  CARDS_BY_ID[cid] = c;
-  CARDS_BY_IDX[c.idx] = c;
-}
-
-export const LEADERS_BY_ID = {};
-export const LEADERS_BY_IDX = new Array(NUM_LEADERS);
-for (const [lid, raw] of Object.entries(leadersJson)) {
-  const l = structuredClone(raw);
-  const ab = l.ability[0];
-  l._ab_id = ab.id;
-  l._ab = ab;
-  l._is_passive = !!ab.passive || ab.id === 'cancelLeader';
-  LEADERS_BY_ID[lid] = l;
-  LEADERS_BY_IDX[l.idx] = l;
-}
-
-export const FACTIONS_BY_ID = factionsJson;
-export const PRESET_LIST = presetsJson;
-export const PRESETS_BY_ID = {};
-for (const p of PRESET_LIST) {
-  PRESETS_BY_ID[p.id] = p;
-}
-
-export function expandPresetDeck(presetId) {
-  const preset = PRESETS_BY_ID[presetId];
-  const out = [];
-  for (const entry of preset.cards) {
-    for (let i = 0; i < (entry.count | 0); i++) out.push(entry.id);
-  }
-  return out;
-}
-
-// ────────────────────────────────────────────────────────────────
-// Deterministic 32-bit PRNG (Mulberry32)
-// ────────────────────────────────────────────────────────────────
-
-export function hashSeed(seed) {
-  if (typeof seed === 'number' && Number.isFinite(seed)) return seed >>> 0;
-  const str = String(seed ?? 'gwent');
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
-  return h >>> 0;
-}
-
-export class RngState {
-  constructor(seed = 1) {
-    this.state = hashSeed(seed);
-  }
-
-  clone() {
-    const r = new RngState(0);
-    r.state = this.state;
-    return r;
-  }
-
-  nextFloat() {
-    let t = (this.state = (this.state + 0x6d2b79f5) >>> 0);
-    t = Math.imul(t ^ (t >>> 15), t | 1) >>> 0;
-    t = (t ^ (t + (Math.imul(t ^ (t >>> 7), t | 61) >>> 0))) >>> 0;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296.0;
-  }
-
-  randInt(n) {
-    if (n <= 0) return 0;
-    return Math.floor(this.nextFloat() * n);
-  }
-
-  shuffle(arr) {
-    const out = arr.slice();
-    for (let i = out.length - 1; i > 0; i--) {
-      const j = this.randInt(i + 1);
-      const tmp = out[i];
-      out[i] = out[j];
-      out[j] = tmp;
-    }
-    return out;
-  }
-
-  pickRandom(arr) {
-    if (!arr || !arr.length) return null;
-    return arr[this.randInt(arr.length)];
-  }
-}
-
-// ────────────────────────────────────────────────────────────────
-// Row Power Computation
-// ────────────────────────────────────────────────────────────────
-
-export function computeRowPowers(rowInsts, hasRowHorn, weatherActive, doubleSpy) {
-  if (!rowInsts.length) {
-    return { powers: [], total: 0, hornActive: hasRowHorn };
-  }
-
-  let hornSources = hasRowHorn ? 1 : 0;
-  let moraleCount = 0;
-  const bondCounts = new Map();
-
-  for (const inst of rowInsts) {
-    const c = CARDS_BY_IDX[inst.card_idx];
-    if (c._is_horn_unit) hornSources += 1;
-    if (c._is_morale) moraleCount += 1;
-    if (c._is_bond) {
-      bondCounts.set(inst.card_idx, (bondCounts.get(inst.card_idx) || 0) + 1);
-    }
-  }
-
-  const hornActive = hornSources > 0;
-  const powers = [];
-  let total = 0;
-
-  for (const inst of rowInsts) {
-    const c = CARDS_BY_IDX[inst.card_idx];
-    let power = c.strength;
-    if (!c._is_hero) {
-      if (weatherActive && power > 1) power = 1;
-      if (doubleSpy && c._is_spy) power *= 2;
-      if (c._is_bond) {
-        const n = bondCounts.get(inst.card_idx) || 1;
-        if (n > 1) power *= n;
-      }
-      const morale = moraleCount - (c._is_morale ? 1 : 0);
-      if (morale > 0) power += morale;
-      if (hornActive) {
-        if (!c._is_horn_unit || hornSources > 1) power *= 2;
-      }
-    }
-    powers.push(power);
-    total += power;
-  }
-
-  return { powers, total, hornActive };
-}
+import { RngState, hashSeed } from './rng.js';
+import { computeRowPowers } from './scoring.js';
+import { HeuristicAI } from './heuristic.js';
 
 // ────────────────────────────────────────────────────────────────
 // Core Gwent Engine
@@ -592,6 +440,10 @@ export class GwentEngine {
     const cid = cdata.id;
 
     if (cid === 'decoy') {
+      // Architectural Decision (ADR): Decoy directly routes to graveyard on play rather than
+      // occupying a board slot as a 0-power placeholder. This simplifies state representation,
+      // prevents accidental Monsters-passive retention or board overcrowding, while preserving
+      // the core mechanic (picking up a friendly non-hero unit/spy back to hand).
       pl.graveyard.push(inst);
       this.sub_phase = 'DECOY';
       this._recomputeScores();
@@ -1047,334 +899,36 @@ export class GwentEngine {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Built-in Heuristic AI (Easy / Normal / Hard) for Web & Arena
+// Unified Re-exports for Backward Compatibility
 // ────────────────────────────────────────────────────────────────
 
-export class HeuristicAI {
-  constructor(difficulty = 'normal', seed = 42) {
-    this.difficulty = ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
-    this.rng = new RngState(seed);
-  }
+export {
+  ROW_KEYS,
+  WEATHER_FOR_ROW,
+  STARTING_HAND,
+  MULLIGAN_MAX,
+  STARTING_GEMS,
+  MAX_ROUNDS,
+  SCHEMA,
+  NUM_CARDS,
+  NUM_LEADERS,
+  ACTION_DIM,
+  HORN_ROW_OFFSET,
+  USE_LEADER_ACTION,
+  PASS_ACTION,
+  OBS_DIM,
+  FACTION_TO_IDX,
+  CARDS_BY_ID,
+  CARDS_BY_IDX,
+  LEADERS_BY_ID,
+  LEADERS_BY_IDX,
+  FACTIONS_BY_ID,
+  PRESET_LIST,
+  PRESETS_BY_ID,
+  expandPresetDeck,
+} from './data.js';
 
-  selectAction(engine) {
-    const legal = engine.getLegalActions();
-    if (!legal.length) return PASS_ACTION;
-    if (legal.length === 1) return legal[0];
-
-    const p = engine.turn;
-    const me = engine.players[p];
-
-    // Tier 1: Easy (Random / Novice)
-    if (this.difficulty === 'easy') {
-      if (engine.sub_phase === 'MULLIGAN') return PASS_ACTION;
-      if (legal.length > 1 && legal.includes(PASS_ACTION)) {
-        if (engine.players[1 - p].passed && engine.scores[p] > engine.scores[1 - p]) {
-          if (this.rng.nextFloat() < 0.55) return PASS_ACTION;
-        }
-        if (engine.scores[p] <= engine.scores[1 - p] && me.hand.length > 4) {
-          const nonPass = legal.filter((a) => a !== PASS_ACTION);
-          return nonPass[this.rng.randInt(nonPass.length)];
-        }
-      }
-      return legal[this.rng.randInt(legal.length)];
-    }
-
-    // Tier 2: Normal (0-ply Static Rule-Based Heuristic, No Forward Clone)
-    if (this.difficulty === 'normal') {
-      if (engine.sub_phase === 'MULLIGAN') return this._chooseMulliganNormal(engine, p, legal);
-      if (engine.sub_phase === 'MEDIC') return this._chooseMedicNormal(engine, p, legal);
-      if (engine.sub_phase === 'DECOY') return this._chooseDecoyTargetNormal(engine, p, legal);
-      return this._choosePlayNormal(engine, p, legal);
-    }
-
-    // Tier 3: Hard (1-ply Forward Simulation via engine.clone() + Search)
-    if (engine.sub_phase === 'MULLIGAN') return this._chooseMulliganHard(engine, p, legal);
-    if (engine.sub_phase === 'MEDIC') return this._chooseMedicHard(engine, p, legal);
-    if (engine.sub_phase === 'DECOY') return this._chooseDecoyTargetHard(engine, p, legal);
-    return this._choosePlayHard(engine, p, legal);
-  }
-
-  // ── NORMAL TIER (0-ply Static Heuristics + Stochastic Noise) ──
-
-  _chooseMulliganNormal(engine, p, legal) {
-    for (const a of legal) {
-      if (a === PASS_ACTION) continue;
-      const c = CARDS_BY_IDX[a];
-      if (c._is_unit && !c._is_spy && !c._is_medic && c.strength <= 1) return a;
-    }
-    return PASS_ACTION;
-  }
-
-  _chooseMedicNormal(engine, p, legal) {
-    let bestA = legal[0];
-    let bestVal = -999;
-    for (const a of legal) {
-      const c = CARDS_BY_IDX[a];
-      const val = c.strength + this.rng.nextFloat() * 4.0;
-      if (val > bestVal) {
-        bestVal = val;
-        bestA = a;
-      }
-    }
-    return bestA;
-  }
-
-  _chooseDecoyTargetNormal(engine, p, legal) {
-    return legal[this.rng.randInt(legal.length)];
-  }
-
-  _choosePlayNormal(engine, p, legal) {
-    const me = engine.players[p];
-    const opp = engine.players[1 - p];
-    const myScore = engine.scores[p];
-    const oppScore = engine.scores[1 - p];
-    const winning =
-      myScore > oppScore ||
-      (myScore === oppScore && me.faction === 'nilfgaard' && opp.faction !== 'nilfgaard');
-
-    if (opp.passed && winning) return PASS_ACTION;
-
-    if (!opp.passed && engine.gems[p] === 2) {
-      if (winning && myScore - oppScore >= 5 && this.rng.nextFloat() < 0.42) {
-        return PASS_ACTION;
-      }
-      if (oppScore - myScore >= 38) {
-        return PASS_ACTION;
-      }
-    }
-
-    let bestAction = PASS_ACTION;
-    let bestVal = -1e9;
-
-    for (const a of legal) {
-      const noise = this.rng.nextFloat() * 6.0;
-      let val = 0;
-      if (a === PASS_ACTION) {
-        if (!winning && engine.gems[p] === 1 && legal.length > 1) continue;
-        val = -4.0 + noise;
-      } else if (a === USE_LEADER_ACTION) {
-        val = 6.5 + noise;
-      } else if (a >= HORN_ROW_OFFSET && a < HORN_ROW_OFFSET + 3) {
-        const rKey = ROW_KEYS[a - HORN_ROW_OFFSET];
-        const nUnits = me.rows[rKey].length;
-        val = (nUnits >= 2 ? 8.0 : 3.0) + noise;
-      } else {
-        const c = CARDS_BY_IDX[a];
-        if (c.id === 'decoy') {
-          val = 2.5 + noise;
-        } else if (c._is_spy) {
-          val = (engine.gems[p] === 2 ? 5.0 - 0.5 * c.strength : 0.5) + noise;
-        } else if (c.type === 'special') {
-          val = (oppScore >= myScore ? 7.5 : 3.5) + noise;
-        } else if (c.type === 'weather') {
-          val = (oppScore > myScore ? 5.5 : 3.0) + noise;
-        } else {
-          val =
-            c.strength +
-            (c._is_medic ? 1.0 : 0) +
-            (c._is_bond || c._is_morale || c._is_muster ? 1.0 : 0) +
-            noise;
-        }
-      }
-      if (val > bestVal) {
-        bestVal = val;
-        bestAction = a;
-      }
-    }
-    return bestAction;
-  }
-
-  // ── HARD TIER (1-ply Forward Simulation via engine.clone() + Search) ──
-
-  _chooseMulliganHard(engine, p, legal) {
-    const pl = engine.players[p];
-    const handCounts = {};
-    for (const inst of pl.hand) {
-      handCounts[inst.card_idx] = (handCounts[inst.card_idx] || 0) + 1;
-    }
-    let worstAction = PASS_ACTION;
-    let worstScore = 0;
-    for (const a of legal) {
-      if (a === PASS_ACTION) continue;
-      const c = CARDS_BY_IDX[a];
-      if (c._is_muster && (handCounts[a] || 0) > 1) return a;
-      if (c.type === 'weather' && (handCounts[a] || 0) > 1) return a;
-      if (c._is_unit && !c._is_spy && !c._is_medic && c.strength <= 2) {
-        const sc = 3 - c.strength;
-        if (sc > worstScore) {
-          worstScore = sc;
-          worstAction = a;
-        }
-      }
-    }
-    return worstAction;
-  }
-
-  _chooseMedicHard(engine, p, legal) {
-    let bestA = legal[0];
-    let bestVal = -999;
-    for (const a of legal) {
-      const c = CARDS_BY_IDX[a];
-      let val = 0;
-      if (c._is_medic) val = 30 + c.strength;
-      else if (c._is_spy) val = engine.gems[p] > 1 ? 16 - c.strength : -10;
-      else val = c.strength + (c._is_bond || c._is_morale || c._is_muster ? 4.5 : 0);
-      if (val > bestVal) {
-        bestVal = val;
-        bestA = a;
-      }
-    }
-    return bestA;
-  }
-
-  _chooseDecoyTargetHard(engine, p, legal) {
-    let bestA = legal[0];
-    let bestVal = -999;
-    for (const a of legal) {
-      const c = CARDS_BY_IDX[a];
-      let val = 0;
-      if (c._is_spy) val = 50 + c.strength;
-      else if (c._is_medic) val = 40;
-      else val = 10 - c.strength;
-      if (val > bestVal) {
-        bestVal = val;
-        bestA = a;
-      }
-    }
-    return bestA;
-  }
-
-  evaluateState(engine, p) {
-    return this._evaluateStateHard(engine, p);
-  }
-
-  _evaluateState(engine, p) {
-    return this._evaluateStateHard(engine, p);
-  }
-
-  _evaluateStateHard(engine, p) {
-    if (engine.done) {
-      if (engine.winner === p) return 500;
-      if (engine.winner === 1 - p) return -500;
-      return 0;
-    }
-    const me = engine.players[p];
-    const opp = engine.players[1 - p];
-    const myScore = engine.scores[p];
-    const oppScore = engine.scores[1 - p];
-    const diff = myScore - oppScore;
-    const gemDiff = (engine.gems[p] - engine.gems[1 - p]) * 38.0;
-    const handDiff = (me.hand.length - opp.hand.length) * 10.5;
-    let leadBonus = 0;
-    if (
-      myScore > oppScore ||
-      (myScore === oppScore && me.faction === 'nilfgaard' && opp.faction !== 'nilfgaard')
-    ) {
-      leadBonus = opp.passed ? 14.0 : 5.0;
-    }
-    return diff + gemDiff + handDiff + leadBonus;
-  }
-
-  _choosePlayHard(engine, p, legal) {
-    const me = engine.players[p];
-    const opp = engine.players[1 - p];
-    const myScore = engine.scores[p];
-    const oppScore = engine.scores[1 - p];
-    const winning =
-      myScore > oppScore ||
-      (myScore === oppScore && me.faction === 'nilfgaard' && opp.faction !== 'nilfgaard');
-
-    if (opp.passed && winning) return PASS_ACTION;
-
-    if (
-      !opp.passed &&
-      engine.gems[p] === 2 &&
-      oppScore - myScore >= 20 &&
-      me.hand.length <= opp.hand.length + 1
-    ) {
-      for (const a of legal) {
-        if (a < NUM_CARDS && CARDS_BY_IDX[a]._is_spy) return a;
-      }
-      return PASS_ACTION;
-    }
-
-    for (const a of legal) {
-      if (a < NUM_CARDS && CARDS_BY_IDX[a]._is_spy) {
-        const cSpy = CARDS_BY_IDX[a];
-        if (!opp.passed) return a;
-        if (engine.gems[p] === 2 && (oppScore - myScore >= 15 || engine.gems[1 - p] === 1)) return a;
-        if (myScore > oppScore + cSpy.strength) return a;
-      }
-    }
-
-    for (const a of legal) {
-      if (a < NUM_CARDS && CARDS_BY_IDX[a].id === 'decoy') {
-        for (const r of ROW_KEYS) {
-          for (const inst of me.rows[r]) {
-            const c = CARDS_BY_IDX[inst.card_idx];
-            if (c._is_spy || (c._is_medic && engine._hasRevivableGrave(p))) return a;
-          }
-        }
-      }
-    }
-
-    let bestAction = PASS_ACTION;
-    let bestVal = -1e9;
-    const baseDiff = myScore - oppScore;
-
-    for (const a of legal) {
-      const jitter = this.rng.nextFloat() * 0.05;
-      let val = 0;
-      if (a === PASS_ACTION) {
-        if (!winning && engine.gems[p] === 1 && legal.length > 1) continue;
-        val = this._evaluateStateHard(engine, p) + jitter;
-        if (winning && !opp.passed && myScore - oppScore >= 15 && engine.gems[p] === 2) {
-          val += 9.0;
-        } else {
-          val -= 6.0;
-        }
-      } else {
-        if (a < NUM_CARDS && CARDS_BY_IDX[a].id === 'decoy') continue;
-        const sim = engine.clone();
-        sim.step(a);
-        let guard = 0;
-        while (
-          !sim.done &&
-          sim.turn === p &&
-          (sim.sub_phase === 'MEDIC' || sim.sub_phase === 'DECOY') &&
-          guard < 5
-        ) {
-          const subLegal = sim.getLegalActions();
-          if (!subLegal.length) break;
-          const subA =
-            sim.sub_phase === 'MEDIC'
-              ? this._chooseMedicHard(sim, p, subLegal)
-              : this._chooseDecoyTargetHard(sim, p, subLegal);
-          sim.step(subA);
-          guard++;
-        }
-        val = this._evaluateStateHard(sim, p) + jitter;
-
-        if (a < NUM_CARDS && (CARDS_BY_IDX[a].type === 'special' || CARDS_BY_IDX[a].type === 'weather')) {
-          const newDiff = sim.scores[p] - sim.scores[1 - p];
-          if (newDiff <= baseDiff) val -= 25.0;
-        }
-
-        if (opp.passed && sim.scores[p] > sim.scores[1 - p]) {
-          val += 28.0 - 0.35 * (sim.scores[p] - sim.scores[1 - p]);
-          if (a < NUM_CARDS && CARDS_BY_IDX[a]._is_hero && engine.gems[1 - p] > 1) {
-            val -= 8.0;
-          }
-        } else if (a < NUM_CARDS && CARDS_BY_IDX[a]._is_hero && engine.round === 1) {
-          val -= 5.0;
-        }
-      }
-      if (val > bestVal) {
-        bestVal = val;
-        bestAction = a;
-      }
-    }
-    return bestAction;
-  }
-}
+export { RngState, hashSeed } from './rng.js';
+export { computeRowPowers } from './scoring.js';
+export { HeuristicAI } from './heuristic.js';
 
