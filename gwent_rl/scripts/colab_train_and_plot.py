@@ -21,6 +21,7 @@ from __future__ import annotations
 import copy
 import json
 import shutil
+import sys
 import time
 from collections import deque
 from pathlib import Path
@@ -32,6 +33,37 @@ import torch.optim as optim
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+class TeeLogger:
+    def __init__(self, filepath: str = "/content/training.log"):
+        self.terminal = sys.stdout
+        self.log_path = Path(filepath)
+        try:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            self.log_file = open(self.log_path, "a", encoding="utf-8")
+        except Exception:
+            self.log_file = None
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.terminal.flush()
+        if self.log_file:
+            try:
+                self.log_file.write(message)
+                self.log_file.flush()
+            except Exception:
+                pass
+
+    def flush(self):
+        self.terminal.flush()
+        if self.log_file:
+            try:
+                self.log_file.flush()
+            except Exception:
+                pass
+
+if Path("/content").exists():
+    sys.stdout = TeeLogger()
 
 from gwent_rl.engine import (
     GwentEngine,
@@ -499,6 +531,14 @@ def run_ppo_experiment(
                 v_losses.append(float(v_loss.item()))
                 entropies.append(float(ent_loss.item()))
 
+        if update % 2 == 0 or update == 1:
+            fps_instant = int((update * batch_size) / max(1e-3, time.perf_counter() - t0))
+            print(
+                f"  [PPO Heartbeat] Upd {global_update:03d}/{start_update + num_updates} | "
+                f"Steps={start_steps + update * batch_size:,} | Games={episodes_completed:,} ({fps_instant} sps) | "
+                f"V-Loss={np.mean(v_losses):.4f} | Elo={league.learner_elo:.0f}"
+            )
+
         if update % snap_every == 0:
             league.add_snapshot(f"snap_ppo_{global_update}", make_torch_policy_fn(model, device))
 
@@ -737,6 +777,14 @@ def run_dmc_experiment(
 
         scheduler.step()
 
+        if it % 2 == 0 or it == 1:
+            fps_dmc = int(total_steps / max(1e-3, time.perf_counter() - t0))
+            print(
+                f"  [DMC Heartbeat] Iter {global_iter:03d}/{start_iter + num_iters} | "
+                f"Episodes={start_episodes + it * batch_episodes:,} | Replay={len(obs_ring):,} | "
+                f"Q-Loss={np.mean(q_losses):.4f} ({fps_dmc} sps) | Elo={league.learner_elo:.0f}"
+            )
+
         if it % snap_every == 0:
             league.add_snapshot(f"snap_dmc_{global_iter}", make_torch_policy_fn(model, device, deterministic=True))
 
@@ -944,8 +992,15 @@ def render_training_charts(
 
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Gwent-RL Colab Training Pipeline")
+    parser.add_argument("--ppo-steps", type=int, default=None, help="Total PPO timesteps")
+    parser.add_argument("--dmc-episodes", type=int, default=None, help="Total DMC episodes")
+    parser.add_argument("--audit-games", type=int, default=400, help="Audit games per difficulty")
+    args, _ = parser.parse_known_args()
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"=== Gwent-RL Colab Stage-2 Extended Training Pipeline | Device: {device} | Core Pool: {CORE_PRESET_IDS} ===")
+    print(f"=== Gwent-RL Colab Self-Play Training Pipeline | Device: {device} | Core Pool: {CORE_PRESET_IDS} ===")
     if torch.cuda.is_available():
         print(f"GPU: {torch.cuda.get_device_name(0)}")
 
@@ -956,10 +1011,18 @@ def main() -> None:
     prev_ppo_hist = prev_metrics.get("ppo_history", [])
     prev_dmc_hist = prev_metrics.get("dmc_history", [])
 
+    is_ppo_warm = ((MODELS_DIR / "ppo_best.pt").exists() or Path("gwent_rl/models/ppo_best.pt").exists()) and bool(prev_ppo_hist)
+    is_dmc_warm = ((MODELS_DIR / "dmc_best.pt").exists() or Path("gwent_rl/models/dmc_best.pt").exists()) and bool(prev_dmc_hist)
+
+    ppo_steps = args.ppo_steps if args.ppo_steps is not None else (1_228_800 if is_ppo_warm else 2_457_600)
+    dmc_episodes = args.dmc_episodes if args.dmc_episodes is not None else (48_000 if is_dmc_warm else 96_000)
+
+    print(f"[Plan] PPO Steps: {ppo_steps:,} ({ppo_steps // 8192} updates, WarmStart={is_ppo_warm}) | DMC Episodes: {dmc_episodes:,} ({dmc_episodes // 384} iterations, WarmStart={is_dmc_warm})")
+
     ppo_model, ppo_hist, ppo_audit = run_ppo_experiment(
         device=device,
-        total_timesteps=1_228_800,
-        prev_history=prev_ppo_hist,
+        total_timesteps=ppo_steps,
+        prev_history=prev_ppo_hist if is_ppo_warm else None,
     )
     torch.save(ppo_model.state_dict(), MODELS_DIR / "ppo_best.pt")
     export_model_onnx(ppo_model, MODELS_DIR / "ppo_v1.onnx")
@@ -967,8 +1030,8 @@ def main() -> None:
 
     dmc_model, dmc_hist, dmc_audit = run_dmc_experiment(
         device=device,
-        total_episodes=48_000,
-        prev_history=prev_dmc_hist,
+        total_episodes=dmc_episodes,
+        prev_history=prev_dmc_hist if is_dmc_warm else None,
     )
     torch.save(dmc_model.state_dict(), MODELS_DIR / "dmc_best.pt")
     export_model_onnx(dmc_model, MODELS_DIR / "dmc_v1.onnx")
