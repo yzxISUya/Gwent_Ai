@@ -68,7 +68,7 @@ class PFSPLeague:
                 w = ((1.0 - learner_wr) ** 1.5) + 0.15
             weights.append(w)
 
-        w_sum = sum(weights)
+        w_sum = max(1e-6, sum(weights))
         r = self.rng.next_float() * w_sum
         acc = 0.0
         for k, w in zip(keys, weights):
@@ -91,7 +91,8 @@ class PFSPLeague:
         else:
             score = 0.5
 
-        expected = 1.0 / (1.0 + 10.0 ** ((m.elo - self.learner_elo) / 400.0))
+        elo_diff = float(np.clip((m.elo - self.learner_elo) / 400.0, -10.0, 10.0))
+        expected = 1.0 / (1.0 + 10.0 ** elo_diff)
         delta = k_factor * (score - expected)
         self.learner_elo += delta
         if not opponent_name.startswith("heuristic_"):

@@ -727,13 +727,15 @@ class GwentEngine:
             }
         )
 
-        # Monsters faction passive: keep 1 random unit on board
+        # Monsters faction passive: keep 1 random non-hero unit on board
         for p in self.players:
             if p.faction != "monsters":
                 continue
             units: List[Dict[str, Any]] = []
             for r in ROW_KEYS:
-                units.extend(p.rows[r])
+                for inst in p.rows[r]:
+                    if not CARDS_BY_IDX[inst["card_idx"]]["_is_hero"]:
+                        units.append(inst)
             kept = self.rng.pick_random(units)
             if kept is not None:
                 p.keep_uid = kept["uid"]
@@ -875,12 +877,33 @@ class GwentEngine:
         for inst in opp.graveyard:
             obs[b5 + inst["card_idx"]] += 1.0 / 3.0
 
-        # Opponent unseen (hand + deck + mulligan_discards) — exact multiset without leaking hand vs deck!
-        for inst in opp.hand:
-            obs[b6 + inst["card_idx"]] += 1.0 / 3.0
-        for inst in opp.deck:
-            obs[b6 + inst["card_idx"]] += 1.0 / 3.0
-        for inst in opp.mulligan_discards:
-            obs[b6 + inst["card_idx"]] += 1.0 / 3.0
+        # Opponent unseen deduced strictly from public board/graveyard and known initial deck multiset:
+        # opp_unseen = (me.initial_counts + opp.initial_counts) - total_visible - my_unseen
+        # Strictly adheres to non-cheating POV encapsulation without reading opp.hand or opp.deck!
+        vis_counts = [0] * NUM_CARDS
+        for p in self.players:
+            for r in ROW_KEYS:
+                for inst in p.rows[r]:
+                    vis_counts[inst["card_idx"]] += 1
+                if p.row_horn[r] is not None and p.row_horn[r].get("card_idx", -1) >= 0:
+                    vis_counts[p.row_horn[r]["card_idx"]] += 1
+            for inst in p.graveyard:
+                vis_counts[inst["card_idx"]] += 1
+        for w_inst in self.weather_cards:
+            vis_counts[w_inst["card_idx"]] += 1
+
+        my_unseen = [0] * NUM_CARDS
+        for inst in me.hand:
+            my_unseen[inst["card_idx"]] += 1
+        for inst in me.deck:
+            my_unseen[inst["card_idx"]] += 1
+        for inst in me.mulligan_discards:
+            my_unseen[inst["card_idx"]] += 1
+
+        step = 1.0 / 3.0
+        for c in range(NUM_CARDS):
+            unseen_c = (me.initial_counts[c] + opp.initial_counts[c]) - vis_counts[c] - my_unseen[c]
+            if unseen_c > 0:
+                obs[b6 + c] = unseen_c * step
 
         return obs

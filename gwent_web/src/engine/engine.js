@@ -849,7 +849,13 @@ export class GwentEngine {
     for (const p of this.players) {
       if (p.faction !== 'monsters') continue;
       const units = [];
-      for (const r of ROW_KEYS) units.push(...p.rows[r]);
+      for (const r of ROW_KEYS) {
+        for (const inst of p.rows[r]) {
+          if (!CARDS_BY_IDX[inst.card_idx]._is_hero) {
+            units.push(inst);
+          }
+        }
+      }
       const kept = this.rng.pickRandom(units);
       if (kept) p.keep_uid = kept.uid;
     }
@@ -988,9 +994,28 @@ export class GwentEngine {
     for (const inst of me.graveyard) obs[b4 + inst.card_idx] += step;
     for (const inst of opp.graveyard) obs[b5 + inst.card_idx] += step;
 
-    for (const inst of opp.hand) obs[b6 + inst.card_idx] += step;
-    for (const inst of opp.deck) obs[b6 + inst.card_idx] += step;
-    for (const inst of opp.mulligan_discards) obs[b6 + inst.card_idx] += step;
+    // Opponent unseen deduced strictly from public board/graveyard and known initial deck multiset:
+    // opp_unseen = (me.initial_counts + opp.initial_counts) - total_visible - my_unseen
+    // Strictly adheres to non-cheating POV encapsulation without reading opp.hand or opp.deck!
+    const visCounts = new Int8Array(NUM_CARDS);
+    for (const p of this.players) {
+      for (const r of ROW_KEYS) {
+        for (const inst of p.rows[r]) visCounts[inst.card_idx]++;
+        if (p.row_horn[r] && p.row_horn[r].card_idx >= 0) visCounts[p.row_horn[r].card_idx]++;
+      }
+      for (const inst of p.graveyard) visCounts[inst.card_idx]++;
+    }
+    for (const wInst of this.weather_cards) visCounts[wInst.card_idx]++;
+
+    const myUnseen = new Int8Array(NUM_CARDS);
+    for (const inst of me.hand) myUnseen[inst.card_idx]++;
+    for (const inst of me.deck) myUnseen[inst.card_idx]++;
+    for (const inst of me.mulligan_discards) myUnseen[inst.card_idx]++;
+
+    for (let c = 0; c < NUM_CARDS; c++) {
+      const unseenC = (me.initial_counts[c] + opp.initial_counts[c]) - visCounts[c] - myUnseen[c];
+      if (unseenC > 0) obs[b6 + c] = unseenC * step;
+    }
 
     return obs;
   }

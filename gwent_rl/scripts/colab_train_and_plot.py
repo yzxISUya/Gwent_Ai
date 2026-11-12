@@ -465,7 +465,10 @@ def run_ppo_experiment(
         b_logprobs = logprobs_buf.reshape(-1)
         b_actions = actions_buf.reshape(-1)
         b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
+        # Value target bounded in [-1.0, 1.0] to match Tanh value head
+        b_returns = torch.clamp(returns.reshape(-1), -1.0, 1.0)
+        # Global advantage normalization across the entire rollout batch
+        b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
 
         b_inds = np.arange(batch_size)
         pg_losses, v_losses, entropies = [], [], []
@@ -476,9 +479,9 @@ def run_ppo_experiment(
                 _, newlogprob, entropy, newvalue = model.get_action_and_value(
                     b_obs[mb], b_mask[mb], b_actions[mb]
                 )
-                ratio = (newlogprob - b_logprobs[mb]).exp()
+                logratio = torch.clamp(newlogprob - b_logprobs[mb], -20.0, 20.0)
+                ratio = logratio.exp()
                 mb_adv = b_advantages[mb]
-                mb_adv = (mb_adv - mb_adv.mean()) / (mb_adv.std() + 1e-8)
 
                 pg_loss1 = -mb_adv * ratio
                 pg_loss2 = -mb_adv * torch.clamp(ratio, 1.0 - clip_coef, 1.0 + clip_coef)
@@ -723,7 +726,8 @@ def run_dmc_experiment(
             mb = np.random.randint(0, n_samples, size=min(512, n_samples))
             q_all = model.predict_q(b_obs[mb])
             q_taken = q_all.gather(1, b_acts[mb].unsqueeze(1)).squeeze(1)
-            loss = nn.functional.mse_loss(q_taken, b_rets[mb])
+            # Robust Huber / Smooth L1 loss for Monte-Carlo return regression
+            loss = nn.functional.smooth_l1_loss(q_taken, b_rets[mb])
 
             optimizer.zero_grad()
             loss.backward()

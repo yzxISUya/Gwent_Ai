@@ -76,7 +76,8 @@ function evaluateHeuristicDistribution(eng, difficulty = 'hard') {
 function runISMCTS(eng, simulations = 48) {
   const p = eng.turn;
   const legalRoot = eng.getLegalActions();
-  const bot = new HeuristicAI('hard', eng.rng.state ^ 0xabcdef);
+  // Use fast 0-ply 'normal' heuristic for MCTS rollouts to prevent 2800+ nested engine.clone() calls
+  const bot = new HeuristicAI('normal', eng.rng.state ^ 0xabcdef);
   if (legalRoot.length <= 1) {
     return evaluateHeuristicDistribution(eng, 'hard');
   }
@@ -90,14 +91,15 @@ function runISMCTS(eng, simulations = 48) {
   }
 
   for (let simIdx = 0; simIdx < simulations; simIdx++) {
-    // Determinize opponent hand & deck
+    // Determinize opponent hand & deck, preserving cards during mulligan
     const sim = eng.clone();
     sim.rng = new RngState(rng.randInt(0x7fffffff));
     const opp = sim.players[1 - p];
     const oppHandLen = opp.hand.length;
-    const pool = rng.shuffle([...opp.hand, ...opp.deck]);
+    const pool = rng.shuffle([...opp.hand, ...opp.deck, ...(opp.mulligan_discards || [])]);
     opp.hand = pool.slice(0, oppHandLen);
     opp.deck = pool.slice(oppHandLen);
+    opp.mulligan_discards = [];
     sim.players[p].deck = rng.shuffle(sim.players[p].deck);
 
     // UCB1 selection at root
@@ -165,9 +167,17 @@ self.onmessage = async (e) => {
         const maskBool = eng.getLegalMask();
         const obsTensor = new ort.Tensor('float32', obsArr, [1, OBS_DIM]);
         const maskTensor = new ort.Tensor('bool', Uint8Array.from(maskBool, (b) => (b ? 1 : 0)), [1, ACTION_DIM]);
-        const out = await sess.run({ obs: obsTensor, mask: maskTensor });
-        probs = out.probs.data;
-        value = out.value.data[0];
+        let out = null;
+        try {
+          out = await sess.run({ obs: obsTensor, mask: maskTensor });
+          probs = new Float32Array(out.probs.data);
+          value = Number(out.value.data[0]);
+        } finally {
+          obsTensor.dispose?.();
+          maskTensor.dispose?.();
+          out?.probs?.dispose?.();
+          out?.value?.dispose?.();
+        }
 
         let maxP = -1;
         for (const a of legal) {

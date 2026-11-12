@@ -47,9 +47,10 @@ def determinize_engine(engine: GwentEngine, root_player: int, rng: RngState) -> 
     me.deck = rng.shuffle(me.deck)
 
     opp_hand_len = len(opp.hand)
-    unseen_pool = rng.shuffle(opp.hand + opp.deck)
+    unseen_pool = rng.shuffle(opp.hand + opp.deck + opp.mulligan_discards)
     opp.hand = unseen_pool[:opp_hand_len]
     opp.deck = unseen_pool[opp_hand_len:]
+    opp.mulligan_discards.clear()
     return sim
 
 

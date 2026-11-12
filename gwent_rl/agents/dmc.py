@@ -61,6 +61,9 @@ def train_dmc(
     for it in range(1, num_iterations + 1):
         progress = (it - 1.0) / max(1, num_iterations)
         eps = eps_start + (eps_end - eps_start) * progress
+        cur_lr = lr * (1.0 - 0.9 * progress)
+        for pg in optimizer.param_groups:
+            pg["lr"] = max(1e-5, cur_lr)
 
         obs_list = []
         act_list = []
@@ -127,7 +130,8 @@ def train_dmc(
                 mb = inds[start : start + minibatch_size]
                 q_all = model.predict_q(b_obs[mb])
                 q_taken = q_all.gather(1, b_acts[mb].unsqueeze(1)).squeeze(1)
-                loss = nn.functional.mse_loss(q_taken, b_rets[mb])
+                # Robust Huber / Smooth L1 loss for Monte-Carlo return regression
+                loss = nn.functional.smooth_l1_loss(q_taken, b_rets[mb])
 
                 optimizer.zero_grad()
                 loss.backward()

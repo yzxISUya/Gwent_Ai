@@ -82,7 +82,9 @@ class GwentPolicyValueNet(nn.Module):
         """
         h = self.encode(obs)
         logits = self.policy_head(h)
-        masked_logits = logits.masked_fill(~mask.bool(), -1e9)
+        bool_mask = mask.bool()
+        mask_val = -1e4 if obs.dtype == torch.float16 else -1e8
+        masked_logits = logits.masked_fill(~bool_mask, mask_val)
         probs = F.softmax(masked_logits, dim=-1)
         value = self.value_head(h)
         return probs, value
@@ -96,7 +98,9 @@ class GwentPolicyValueNet(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         h = self.encode(obs)
         logits = self.policy_head(h)
-        masked_logits = logits.masked_fill(~mask.bool(), -1e9)
+        bool_mask = mask.bool()
+        mask_val = -1e4 if obs.dtype == torch.float16 else -1e8
+        masked_logits = logits.masked_fill(~bool_mask, mask_val)
         dist = Categorical(logits=masked_logits)
         if action is None:
             if deterministic:
@@ -104,7 +108,10 @@ class GwentPolicyValueNet(nn.Module):
             else:
                 action = dist.sample()
         log_prob = dist.log_prob(action)
-        entropy = dist.entropy()
+        # Numerically stable masked entropy: only sum entropy over legal actions
+        probs = F.softmax(masked_logits, dim=-1)
+        log_probs = torch.log(probs + 1e-12)
+        entropy = -torch.sum(torch.where(bool_mask, probs * log_probs, torch.zeros_like(probs)), dim=-1)
         value = self.value_head(h).squeeze(-1)
         return action, log_prob, entropy, value
 
@@ -154,7 +161,8 @@ class GwentDMCNet(nn.Module):
         """
         q = self.predict_q(obs)
         bool_mask = mask.bool()
-        masked_q = q.masked_fill(~bool_mask, -1e9)
+        mask_val = -1e4 if obs.dtype == torch.float16 else -1e8
+        masked_q = q.masked_fill(~bool_mask, mask_val)
         probs = F.softmax(masked_q / self.temperature, dim=-1)
         best_q, _ = torch.max(masked_q, dim=-1, keepdim=True)
         value = torch.clamp(best_q, -1.0, 1.0)

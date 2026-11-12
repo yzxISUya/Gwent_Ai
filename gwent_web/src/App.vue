@@ -386,7 +386,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw } from 'vue';
 import {
   GwentEngine,
   HeuristicAI,
@@ -401,6 +401,17 @@ import {
   USE_LEADER_ACTION,
   PASS_ACTION,
 } from './engine/engine.js';
+
+// Mark static metadata dictionaries as raw to prevent Vue deep reactive proxy overhead
+CARDS_BY_IDX.forEach((c) => {
+  if (c && typeof c === 'object') markRaw(c);
+});
+Object.values(LEADERS_BY_ID).forEach((l) => {
+  if (l && typeof l === 'object') markRaw(l);
+});
+Object.values(FACTIONS_BY_ID).forEach((f) => {
+  if (f && typeof f === 'object') markRaw(f);
+});
 
 const presetList = PRESET_LIST;
 const hornRowOffset = HORN_ROW_OFFSET;

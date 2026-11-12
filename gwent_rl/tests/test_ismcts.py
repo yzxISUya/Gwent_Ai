@@ -3,6 +3,12 @@ Quick verification of ISMCTS (Information-Set Monte-Carlo Tree Search)
 and GwentSingleAgentEnv.
 """
 from __future__ import annotations
+import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 from gwent_rl.engine import GwentEngine, HeuristicAI
 from gwent_rl.env import GwentSingleAgentEnv
 from gwent_rl.agents.ismcts import ISMCTSAgent

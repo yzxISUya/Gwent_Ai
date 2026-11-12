@@ -26,9 +26,13 @@ def make_torch_policy_fn(model: nn.Module, device: torch.device, deterministic: 
         obs = torch.from_numpy(engine.encode_observation()).unsqueeze(0)
         mask = torch.tensor([engine.get_legal_mask()], dtype=torch.bool)
         probs, _ = model_Copy(obs, mask)
+        p0 = probs[0]
+        if torch.isnan(p0).any() or p0.sum() <= 0:
+            legal = engine.get_legal_actions()
+            return legal[0] if legal else 90  # PASS_ACTION
         if deterministic:
-            return int(torch.argmax(probs[0]).item())
-        dist = torch.distributions.Categorical(probs=probs[0])
+            return int(torch.argmax(p0).item())
+        dist = torch.distributions.Categorical(probs=p0)
         return int(dist.sample().item())
 
     return _policy_fn
@@ -187,6 +191,11 @@ def train_masked_ppo(
         for env in envs:
             env.shaping_weight = shaping_w
 
+        # Linear learning rate annealing to ensure late-stage convergence stability
+        cur_lr = lr * (1.0 - progress)
+        for pg in optimizer.param_groups:
+            pg["lr"] = max(1e-5, cur_lr)
+
         for step in range(num_steps):
             obs_buf[step] = next_obs
             mask_buf[step] = next_mask
@@ -245,7 +254,11 @@ def train_masked_ppo(
         b_logprobs = logprobs_buf.reshape(-1)
         b_actions = actions_buf.reshape(-1)
         b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
+        # Value target bounded in [-1.0, 1.0] to match Tanh value head
+        b_returns = torch.clamp(returns.reshape(-1), -1.0, 1.0)
+
+        # Global advantage normalization across the entire rollout batch
+        b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
 
         b_inds = np.arange(batch_size)
         for _ in range(update_epochs):
@@ -257,11 +270,10 @@ def train_masked_ppo(
                 _, newlogprob, entropy, newvalue = model.get_action_and_value(
                     b_obs[mb_inds], b_mask[mb_inds], b_actions[mb_inds]
                 )
-                logratio = newlogprob - b_logprobs[mb_inds]
+                logratio = torch.clamp(newlogprob - b_logprobs[mb_inds], -20.0, 20.0)
                 ratio = logratio.exp()
 
                 mb_adv = b_advantages[mb_inds]
-                mb_adv = (mb_adv - mb_adv.mean()) / (mb_adv.std() + 1e-8)
 
                 pg_loss1 = -mb_adv * ratio
                 pg_loss2 = -mb_adv * torch.clamp(ratio, 1.0 - clip_coef, 1.0 + clip_coef)
