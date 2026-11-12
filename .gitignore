@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+checkpoints/
+gwent_rl/tests/_parity_cases.json
+_run_parity_check.mjs
+
+.ipynb_checkpoints/
+
+node_modules/
+gwent_web/dist/
+gwent_web/.vite/

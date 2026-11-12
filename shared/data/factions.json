@@ -1,0 +1,92 @@
+{
+  "northern-realms": {
+    "id": "northern-realms",
+    "nameZh": "北方领域",
+    "nameEn": "Northern Realms",
+    "sigil": "lion",
+    "shortZh": "北方",
+    "colors": {
+      "primary": "#4d7ea8",
+      "accent": "#c9a227",
+      "glow": "#9cc4e4"
+    },
+    "ability": {
+      "id": "drawOnRoundWin"
+    },
+    "abilityZh": "每赢下一小局，在下一小局开始时从牌堆抽 1 张牌。",
+    "abilityEn": "Draw a card from your deck whenever you win a round.",
+    "loreZh": "泰莫利亚、瑞达尼亚与科德温诸国并肩而立。北境的人民坚毅而多疑，他们的军队以纪律与钢铁守住最后的自由。"
+  },
+  "nilfgaard": {
+    "id": "nilfgaard",
+    "nameZh": "尼弗迦德帝国",
+    "nameEn": "Nilfgaardian Empire",
+    "sigil": "sun",
+    "shortZh": "尼弗迦德",
+    "colors": {
+      "primary": "#1b1b1d",
+      "accent": "#d4af37",
+      "glow": "#f0d078"
+    },
+    "ability": {
+      "id": "winTies"
+    },
+    "abilityZh": "平局时视为尼弗迦德获胜（只扣对手 1 颗宝石）。",
+    "abilityEn": "Wins any round that ends in a draw.",
+    "loreZh": "来自南方的黑衣帝国，以烈日为徽。恩希尔的野心与纪律一样森冷，帝国的军团所到之处，皆被纳入版图。"
+  },
+  "monsters": {
+    "id": "monsters",
+    "nameZh": "怪物",
+    "nameEn": "Monsters",
+    "sigil": "claw",
+    "shortZh": "怪物",
+    "colors": {
+      "primary": "#7a1f1f",
+      "accent": "#d9cbb3",
+      "glow": "#ff6b5a"
+    },
+    "ability": {
+      "id": "keepRandomUnit"
+    },
+    "abilityZh": "每小局结束时，随机保留 1 张己方单位牌到下一小局（含英雄）。",
+    "abilityEn": "Keeps a random unit card on the battlefield after each round.",
+    "loreZh": "天球交汇后滞留大陆的怪物——食尸鬼、吸血鬼、巨兽与妖灵。它们没有旗帜，只有饥饿与本能。"
+  },
+  "scoiatael": {
+    "id": "scoiatael",
+    "nameZh": "松鼠党",
+    "nameEn": "Scoia'tael",
+    "sigil": "leaf",
+    "shortZh": "松鼠党",
+    "colors": {
+      "primary": "#2f5d3a",
+      "accent": "#b87333",
+      "glow": "#a8e0a0"
+    },
+    "ability": {
+      "id": "scoiataelFirst"
+    },
+    "abilityZh": "开局默认由松鼠党先手（双方同为松鼠党时随机抛硬币）。",
+    "abilityEn": "Scoia'tael automatically takes the first turn in Round 1.",
+    "loreZh": "被人类逐出家园的精灵、矮人与其他非人种族组成的游击队。他们藏身于森林，以箭与仇恨回应压迫。"
+  },
+  "neutral": {
+    "id": "neutral",
+    "nameZh": "中立",
+    "nameEn": "Neutral",
+    "sigil": "star",
+    "shortZh": "中立",
+    "colors": {
+      "primary": "#8b7d5c",
+      "accent": "#d9cbb3",
+      "glow": "#e7dcc2"
+    },
+    "ability": {
+      "id": "none"
+    },
+    "abilityZh": "中立牌不属于任何阵营，可被任意阵营编入牌组。",
+    "abilityEn": "Neutral cards can be used by any faction.",
+    "loreZh": "不属于任何阵营的猎魔人、术士、吟游诗人与特殊牌。乱世之中，人人皆可雇佣，也人人皆可背弃。"
+  }
+}

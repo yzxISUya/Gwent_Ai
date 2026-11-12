@@ -1,0 +1,1861 @@
+{
+  "arachas": {
+    "id": "arachas",
+    "idx": 0,
+    "nameZh": "蟹蜘蛛",
+    "nameEn": "Arachas",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Arachas",
+        "targets": [
+          "arachas"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「蟹蜘蛛」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Arachas\" in your deck and play them instantly."
+  },
+  "arachas-behemoth": {
+    "id": "arachas-behemoth",
+    "idx": 1,
+    "nameZh": "蟹蜘蛛巨兽",
+    "nameEn": "Arachas Behemoth",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Arachas",
+        "targets": [
+          "arachas",
+          "arachas-behemoth"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「蟹蜘蛛」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Arachas\" in your deck and play them instantly."
+  },
+  "ballista": {
+    "id": "ballista",
+    "idx": 2,
+    "nameZh": "弩炮",
+    "nameEn": "Ballista",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "biting-frost": {
+    "id": "biting-frost",
+    "idx": 3,
+    "nameZh": "刺骨冰霜",
+    "nameEn": "Biting Frost",
+    "faction": "neutral",
+    "type": "weather",
+    "hero": false,
+    "rows": [],
+    "strength": 0,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "weather",
+        "weather": "frost"
+      }
+    ],
+    "abilityZh": "天气：将双方近战行所有单位的战力降为 1（0 战力不变），持续到本小局结束。",
+    "abilityEn": "Weather: Sets the strength of all Close Combat units to 1 for both players."
+  },
+  "black-infantry-archer": {
+    "id": "black-infantry-archer",
+    "idx": 4,
+    "nameZh": "黑衣步兵弓手",
+    "nameEn": "Black Infantry Archer",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 2,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "blue-stripes-commando": {
+    "id": "blue-stripes-commando",
+    "idx": 5,
+    "nameZh": "蓝衣铁卫",
+    "nameEn": "Blue Stripes Commando",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "bond"
+      }
+    ],
+    "abilityZh": "紧缚：同一行每有 1 张同名单位，自身战力 ×同名单位数量。",
+    "abilityEn": "Tight Bond: This card's strength is multiplied by the number of cards with the same name in its row."
+  },
+  "cahir-mawr-dyffryn-aep-ceallach": {
+    "id": "cahir-mawr-dyffryn-aep-ceallach",
+    "idx": 6,
+    "nameZh": "卡希尔·莫·迪弗林·埃普·塞拉赫",
+    "nameEn": "Cahir Mawr Dyffryn aep Ceallach",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "catapult": {
+    "id": "catapult",
+    "idx": 7,
+    "nameZh": "投石车",
+    "nameEn": "Catapult",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 8,
+    "copies": 2,
+    "abilities": [
+      {
+        "id": "bond"
+      }
+    ],
+    "abilityZh": "紧缚：同一行每有 1 张同名单位，自身战力 ×同名单位数量。",
+    "abilityEn": "Tight Bond: This card's strength is multiplied by the number of cards with the same name in its row."
+  },
+  "cirilla-fiona-elen-riannon": {
+    "id": "cirilla-fiona-elen-riannon",
+    "idx": 8,
+    "nameZh": "希里雅·菲欧娜·伊伦·雷安伦",
+    "nameEn": "Cirilla Fiona Elen Riannon",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 15,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。\n集结：从牌堆找出所有「萝卜」卡牌并立即打出。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities.\nMuster: Find all cards named \"Roach\" in your deck and play them instantly."
+  },
+  "clear-weather": {
+    "id": "clear-weather",
+    "idx": 9,
+    "nameZh": "晴天",
+    "nameEn": "Clear Weather",
+    "faction": "neutral",
+    "type": "weather",
+    "hero": false,
+    "rows": [],
+    "strength": 0,
+    "copies": 2,
+    "abilities": [
+      {
+        "id": "weather",
+        "weather": "clear"
+      }
+    ],
+    "abilityZh": "天气：清除当前所有天气效果。",
+    "abilityEn": "Weather: Removes all Weather Card effects."
+  },
+  "commander-s-horn": {
+    "id": "commander-s-horn",
+    "idx": 10,
+    "nameZh": "指挥官号角",
+    "nameEn": "Commander's Horn",
+    "faction": "neutral",
+    "type": "special",
+    "hero": false,
+    "rows": [],
+    "strength": 0,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "horn"
+      }
+    ],
+    "abilityZh": "号角：选择己方一行放置，该行所有单位战力翻倍，持续到本小局结束。",
+    "abilityEn": "Commander's Horn: Place on one of your rows. Doubles the strength of all units in that row until the end of the round."
+  },
+  "crinfrid-reavers-dragon-hunter": {
+    "id": "crinfrid-reavers-dragon-hunter",
+    "idx": 11,
+    "nameZh": "克林弗里德屠龙者",
+    "nameEn": "Crinfrid Reavers Dragon Hunter",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 5,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "bond"
+      }
+    ],
+    "abilityZh": "紧缚：同一行每有 1 张同名单位，自身战力 ×同名单位数量。",
+    "abilityEn": "Tight Bond: This card's strength is multiplied by the number of cards with the same name in its row."
+  },
+  "crone-brewess": {
+    "id": "crone-brewess",
+    "idx": 12,
+    "nameZh": "煮妇",
+    "nameEn": "Crone: Brewess",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Crone",
+        "targets": [
+          "crone-brewess",
+          "crone-weavess",
+          "crone-whispess"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「老巫妪」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Crone\" in your deck and play them instantly."
+  },
+  "crone-weavess": {
+    "id": "crone-weavess",
+    "idx": 13,
+    "nameZh": "织婆",
+    "nameEn": "Crone: Weavess",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Crone",
+        "targets": [
+          "crone-brewess",
+          "crone-weavess",
+          "crone-whispess"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「老巫妪」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Crone\" in your deck and play them instantly."
+  },
+  "crone-whispess": {
+    "id": "crone-whispess",
+    "idx": 14,
+    "nameZh": "呢喃婆",
+    "nameEn": "Crone: Whispess",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Crone",
+        "targets": [
+          "crone-brewess",
+          "crone-weavess",
+          "crone-whispess"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「老巫妪」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Crone\" in your deck and play them instantly."
+  },
+  "dandelion": {
+    "id": "dandelion",
+    "idx": 15,
+    "nameZh": "丹德里恩",
+    "nameEn": "Dandelion",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 2,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "horn"
+      }
+    ],
+    "abilityZh": "号角：使所在行获得号角效果，该行单位战力翻倍（自身不受此号角影响）。",
+    "abilityEn": "Commander's Horn: Treat this card's row as if a Commander's Horn were placed there (this card is not doubled by itself)."
+  },
+  "decoy": {
+    "id": "decoy",
+    "idx": 16,
+    "nameZh": "诱饵",
+    "nameEn": "Decoy",
+    "faction": "neutral",
+    "type": "special",
+    "hero": false,
+    "rows": [],
+    "strength": 0,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "decoy"
+      }
+    ],
+    "abilityZh": "诱饵：选择己方场上 1 张非英雄单位牌返回手牌；本牌以 0 战力占位留在原行。",
+    "abilityEn": "Decoy: Swap with a non-Hero unit card on your side of the battlefield to return it to your hand."
+  },
+  "dol-blathanna-archer": {
+    "id": "dol-blathanna-archer",
+    "idx": 17,
+    "nameZh": "多尔·布拉萨纳弓手",
+    "nameEn": "Dol Blathanna Archer",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "dol-blathanna-scout": {
+    "id": "dol-blathanna-scout",
+    "idx": 18,
+    "nameZh": "多尔·布拉萨纳斥候",
+    "nameEn": "Dol Blathanna Scout",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 6,
+    "copies": 3,
+    "abilities": [],
+    "abilityZh": "灵巧：可放置在近战行或远程行，落子后不可移动。",
+    "abilityEn": "Agile: Can be placed in either the Close or Ranged row. Cannot be moved once placed."
+  },
+  "draug": {
+    "id": "draug",
+    "idx": 19,
+    "nameZh": "德劳格",
+    "nameEn": "Draug",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "dun-banner-medic": {
+    "id": "dun-banner-medic",
+    "idx": 20,
+    "nameZh": "邓恩旗医师",
+    "nameEn": "Dun Banner Medic",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "medic"
+      }
+    ],
+    "abilityZh": "医师：从己方弃牌堆选择 1 张非英雄单位牌，立即打出。",
+    "abilityEn": "Medic: Choose one non-Hero unit card from your discard pile and play it instantly."
+  },
+  "dwarven-skirmisher": {
+    "id": "dwarven-skirmisher",
+    "idx": 21,
+    "nameZh": "矮人散兵",
+    "nameEn": "Dwarven Skirmisher",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 3,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Dwarven Skirmisher",
+        "targets": [
+          "dwarven-skirmisher"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「矮人散兵」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Dwarven Skirmisher\" in your deck and play them instantly."
+  },
+  "earth-elemental": {
+    "id": "earth-elemental",
+    "idx": 22,
+    "nameZh": "土元素",
+    "nameEn": "Earth Elemental",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "eithne": {
+    "id": "eithne",
+    "idx": 23,
+    "nameZh": "艾思娜",
+    "nameEn": "Eithne",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "elven-skirmisher": {
+    "id": "elven-skirmisher",
+    "idx": 24,
+    "nameZh": "精灵散兵",
+    "nameEn": "Elven Skirmisher",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 2,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Elven Skirmisher",
+        "targets": [
+          "elven-skirmisher"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「精灵散兵」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Elven Skirmisher\" in your deck and play them instantly."
+  },
+  "esterad-thyssen": {
+    "id": "esterad-thyssen",
+    "idx": 25,
+    "nameZh": "埃斯特拉德·提森",
+    "nameEn": "Esterad Thyssen",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "etolian-auxiliary-archers": {
+    "id": "etolian-auxiliary-archers",
+    "idx": 26,
+    "nameZh": "艾托利亚辅助弓手",
+    "nameEn": "Etolian Auxiliary Archers",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 1,
+    "copies": 2,
+    "abilities": [
+      {
+        "id": "medic"
+      }
+    ],
+    "abilityZh": "医师：从己方弃牌堆选择 1 张非英雄单位牌，立即打出。",
+    "abilityEn": "Medic: Choose one non-Hero unit card from your discard pile and play it instantly."
+  },
+  "fiend": {
+    "id": "fiend",
+    "idx": 27,
+    "nameZh": "恶魔",
+    "nameEn": "Fiend",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "fire-elemental": {
+    "id": "fire-elemental",
+    "idx": 28,
+    "nameZh": "火元素",
+    "nameEn": "Fire Elemental",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "forktail": {
+    "id": "forktail",
+    "idx": 29,
+    "nameZh": "叉尾龙",
+    "nameEn": "Forktail",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "fringilla-vigo": {
+    "id": "fringilla-vigo",
+    "idx": 30,
+    "nameZh": "弗琳吉拉·维果",
+    "nameEn": "Fringilla Vigo",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "geralt-of-rivia": {
+    "id": "geralt-of-rivia",
+    "idx": 31,
+    "nameZh": "利维亚的杰洛特",
+    "nameEn": "Geralt of Rivia",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 15,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。\n集结：从牌堆找出所有「萝卜」卡牌并立即打出。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities.\nMuster: Find all cards named \"Roach\" in your deck and play them instantly."
+  },
+  "ghoul": {
+    "id": "ghoul",
+    "idx": 32,
+    "nameZh": "食尸鬼",
+    "nameEn": "Ghoul",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 1,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Ghoul",
+        "targets": [
+          "ghoul"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「食尸鬼」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Ghoul\" in your deck and play them instantly."
+  },
+  "griffin": {
+    "id": "griffin",
+    "idx": 33,
+    "nameZh": "狮鹫",
+    "nameEn": "Griffin",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "havekar-healer": {
+    "id": "havekar-healer",
+    "idx": 34,
+    "nameZh": "哈维卡医师",
+    "nameEn": "Havekar Healer",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 0,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "medic"
+      }
+    ],
+    "abilityZh": "医师：从己方弃牌堆选择 1 张非英雄单位牌，立即打出。",
+    "abilityEn": "Medic: Choose one non-Hero unit card from your discard pile and play it instantly."
+  },
+  "havekar-smuggler": {
+    "id": "havekar-smuggler",
+    "idx": 35,
+    "nameZh": "哈维卡走私贩",
+    "nameEn": "Havekar Smuggler",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Havekar Smuggler",
+        "targets": [
+          "havekar-smuggler"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「哈维卡走私贩」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Havekar Smuggler\" in your deck and play them instantly."
+  },
+  "ida-emean-aep-sivney": {
+    "id": "ida-emean-aep-sivney",
+    "idx": 36,
+    "nameZh": "伊达·艾敏·艾普·西夫尼",
+    "nameEn": "Ida Emean aep Sivney",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "imlerith": {
+    "id": "imlerith",
+    "idx": 37,
+    "nameZh": "伊勒瑞斯",
+    "nameEn": "Imlerith",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "impenetrable-fog": {
+    "id": "impenetrable-fog",
+    "idx": 38,
+    "nameZh": "浓雾",
+    "nameEn": "Impenetrable Fog",
+    "faction": "neutral",
+    "type": "weather",
+    "hero": false,
+    "rows": [],
+    "strength": 0,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "weather",
+        "weather": "fog"
+      }
+    ],
+    "abilityZh": "天气：将双方远程行所有单位的战力降为 1（0 战力不变），持续到本小局结束。",
+    "abilityEn": "Weather: Sets the strength of all Ranged Combat units to 1 for both players."
+  },
+  "impera-brigade-guard": {
+    "id": "impera-brigade-guard",
+    "idx": 39,
+    "nameZh": "因佩拉旅近卫",
+    "nameEn": "Impera Brigade Guard",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 3,
+    "copies": 4,
+    "abilities": [
+      {
+        "id": "bond"
+      }
+    ],
+    "abilityZh": "紧缚：同一行每有 1 张同名单位，自身战力 ×同名单位数量。",
+    "abilityEn": "Tight Bond: This card's strength is multiplied by the number of cards with the same name in its row."
+  },
+  "iorveth": {
+    "id": "iorveth",
+    "idx": 40,
+    "nameZh": "伊欧菲斯",
+    "nameEn": "Iorveth",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "isengrim-faoiltiarna": {
+    "id": "isengrim-faoiltiarna",
+    "idx": 41,
+    "nameZh": "伊森格林·法欧提亚纳",
+    "nameEn": "Isengrim Faoiltiarna",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      },
+      {
+        "id": "morale"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。\n士气：同排其他单位各获得 +1 战力。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities.\nMorale: Adds +1 strength to all other units in the same row."
+  },
+  "john-natalis": {
+    "id": "john-natalis",
+    "idx": 42,
+    "nameZh": "约翰·纳塔利斯",
+    "nameEn": "John Natalis",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "kaedweni-siege-expert": {
+    "id": "kaedweni-siege-expert",
+    "idx": 43,
+    "nameZh": "科德温攻城专家",
+    "nameEn": "Kaedweni Siege Expert",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 1,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "morale"
+      }
+    ],
+    "abilityZh": "士气：同排其他单位各获得 +1 战力。",
+    "abilityEn": "Morale: Adds +1 strength to all other units in the same row."
+  },
+  "kayran": {
+    "id": "kayran",
+    "idx": 44,
+    "nameZh": "卡兰",
+    "nameEn": "Kayran",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 8,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      },
+      {
+        "id": "morale"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。\n士气：同排其他单位各获得 +1 战力。\n灵巧：可放置在近战行或远程行，落子后不可移动。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities.\nMorale: Adds +1 strength to all other units in the same row.\nAgile: Can be placed in either the Close or Ranged row. Cannot be moved once placed."
+  },
+  "keira-metz": {
+    "id": "keira-metz",
+    "idx": 45,
+    "nameZh": "凯拉·梅兹",
+    "nameEn": "Keira Metz",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "leshen": {
+    "id": "leshen",
+    "idx": 46,
+    "nameZh": "林精",
+    "nameEn": "Leshen",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "letho-of-gulet": {
+    "id": "letho-of-gulet",
+    "idx": 47,
+    "nameZh": "古雷特的雷索",
+    "nameEn": "Letho of Gulet",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "mahakaman-defender": {
+    "id": "mahakaman-defender",
+    "idx": 48,
+    "nameZh": "玛哈坎守卫",
+    "nameEn": "Mahakaman Defender",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 5,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "menno-coehoorn": {
+    "id": "menno-coehoorn",
+    "idx": 49,
+    "nameZh": "门诺·科霍恩",
+    "nameEn": "Menno Coehoorn",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      },
+      {
+        "id": "medic"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。\n医师：从己方弃牌堆选择 1 张非英雄单位牌，立即打出。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities.\nMedic: Choose one non-Hero unit card from your discard pile and play it instantly."
+  },
+  "milva": {
+    "id": "milva",
+    "idx": 50,
+    "nameZh": "米尔瓦",
+    "nameEn": "Milva",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "morale"
+      }
+    ],
+    "abilityZh": "士气：同排其他单位各获得 +1 战力。",
+    "abilityEn": "Morale: Adds +1 strength to all other units in the same row."
+  },
+  "morvran-voorhis": {
+    "id": "morvran-voorhis",
+    "idx": 51,
+    "nameZh": "莫尔凡·符里斯",
+    "nameEn": "Morvran Voorhis",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "siege"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "mysterious-elf": {
+    "id": "mysterious-elf",
+    "idx": 52,
+    "nameZh": "神秘精灵",
+    "nameEn": "Mysterious Elf",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 0,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      },
+      {
+        "id": "spy",
+        "draw": 2
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。\n间谍：置于对方战场，战力计入对方；己方从牌堆抽 2 张牌。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities.\nSpy: Place on your opponent's battlefield (counts towards their total) and draw 2 cards from your deck."
+  },
+  "nausicaa-cavalry-rider": {
+    "id": "nausicaa-cavalry-rider",
+    "idx": 53,
+    "nameZh": "瑙西卡骑兵",
+    "nameEn": "Nausicaa Cavalry Rider",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 2,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "bond"
+      }
+    ],
+    "abilityZh": "紧缚：同一行每有 1 张同名单位，自身战力 ×同名单位数量。",
+    "abilityEn": "Tight Bond: This card's strength is multiplied by the number of cards with the same name in its row."
+  },
+  "nekker": {
+    "id": "nekker",
+    "idx": 54,
+    "nameZh": "孽鬼",
+    "nameEn": "Nekker",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 2,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Nekker",
+        "targets": [
+          "nekker"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「孽鬼」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Nekker\" in your deck and play them instantly."
+  },
+  "philippa-eilhart": {
+    "id": "philippa-eilhart",
+    "idx": 55,
+    "nameZh": "菲丽芭·艾哈特",
+    "nameEn": "Philippa Eilhart",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "poor-fucking-infantry": {
+    "id": "poor-fucking-infantry",
+    "idx": 56,
+    "nameZh": "可怜的步兵",
+    "nameEn": "Poor Fucking Infantry",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 1,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "bond"
+      }
+    ],
+    "abilityZh": "紧缚：同一行每有 1 张同名单位，自身战力 ×同名单位数量。",
+    "abilityEn": "Tight Bond: This card's strength is multiplied by the number of cards with the same name in its row."
+  },
+  "prince-stennis": {
+    "id": "prince-stennis",
+    "idx": 57,
+    "nameZh": "斯坦尼斯王子",
+    "nameEn": "Prince Stennis",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "spy",
+        "draw": 2
+      }
+    ],
+    "abilityZh": "间谍：置于对方战场，战力计入对方；己方从牌堆抽 2 张牌。",
+    "abilityEn": "Spy: Place on your opponent's battlefield (counts towards their total) and draw 2 cards from your deck."
+  },
+  "redanian-foot-soldier": {
+    "id": "redanian-foot-soldier",
+    "idx": 58,
+    "nameZh": "瑞达尼亚步兵",
+    "nameEn": "Redanian Foot Soldier",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 1,
+    "copies": 2,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "saesenthessis": {
+    "id": "saesenthessis",
+    "idx": 59,
+    "nameZh": "萨琪亚",
+    "nameEn": "Saesenthessis",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "scorch": {
+    "id": "scorch",
+    "idx": 60,
+    "nameZh": "灼烧",
+    "nameEn": "Scorch",
+    "faction": "neutral",
+    "type": "special",
+    "hero": false,
+    "rows": [],
+    "strength": 0,
+    "copies": 3,
+    "abilities": [
+      {
+        "id": "scorch",
+        "mode": "any"
+      }
+    ],
+    "abilityZh": "灼烧：摧毁全场战力最高的非英雄单位，并列最高者全部摧毁。",
+    "abilityEn": "Scorch: Kill the strongest non-Hero unit(s) on the battlefield."
+  },
+  "shilard-fitz-oesterlen": {
+    "id": "shilard-fitz-oesterlen",
+    "idx": 61,
+    "nameZh": "希拉德·菲茨-奥斯特伦",
+    "nameEn": "Shilard Fitz-Oesterlen",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 7,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "spy",
+        "draw": 2
+      }
+    ],
+    "abilityZh": "间谍：置于对方战场，战力计入对方；己方从牌堆抽 2 张牌。",
+    "abilityEn": "Spy: Place on your opponent's battlefield (counts towards their total) and draw 2 cards from your deck."
+  },
+  "siege-engineer": {
+    "id": "siege-engineer",
+    "idx": 62,
+    "nameZh": "攻城工程师",
+    "nameEn": "Siege Engineer",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "siege-technician": {
+    "id": "siege-technician",
+    "idx": 63,
+    "nameZh": "攻城技师",
+    "nameEn": "Siege Technician",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 0,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "medic"
+      }
+    ],
+    "abilityZh": "医师：从己方弃牌堆选择 1 张非英雄单位牌，立即打出。",
+    "abilityEn": "Medic: Choose one non-Hero unit card from your discard pile and play it instantly."
+  },
+  "siege-tower": {
+    "id": "siege-tower",
+    "idx": 64,
+    "nameZh": "攻城塔",
+    "nameEn": "Siege Tower",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "sigismund-dijkstra": {
+    "id": "sigismund-dijkstra",
+    "idx": 65,
+    "nameZh": "西吉斯蒙德·迪杰斯特拉",
+    "nameEn": "Sigismund Dijkstra",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "spy",
+        "draw": 2
+      }
+    ],
+    "abilityZh": "间谍：置于对方战场，战力计入对方；己方从牌堆抽 2 张牌。",
+    "abilityEn": "Spy: Place on your opponent's battlefield (counts towards their total) and draw 2 cards from your deck."
+  },
+  "stefan-skellen": {
+    "id": "stefan-skellen",
+    "idx": 66,
+    "nameZh": "斯特凡·斯凯伦",
+    "nameEn": "Stefan Skellen",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 9,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "spy",
+        "draw": 2
+      }
+    ],
+    "abilityZh": "间谍：置于对方战场，战力计入对方；己方从牌堆抽 2 张牌。",
+    "abilityEn": "Spy: Place on your opponent's battlefield (counts towards their total) and draw 2 cards from your deck."
+  },
+  "thaler": {
+    "id": "thaler",
+    "idx": 67,
+    "nameZh": "塔勒",
+    "nameEn": "Thaler",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 1,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "spy",
+        "draw": 2
+      }
+    ],
+    "abilityZh": "间谍：置于对方战场，战力计入对方；己方从牌堆抽 2 张牌。",
+    "abilityEn": "Spy: Place on your opponent's battlefield (counts towards their total) and draw 2 cards from your deck."
+  },
+  "tibor-eggebracht": {
+    "id": "tibor-eggebracht",
+    "idx": 68,
+    "nameZh": "蒂博尔·埃格布拉赫特",
+    "nameEn": "Tibor Eggebracht",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "torrential-rain": {
+    "id": "torrential-rain",
+    "idx": 69,
+    "nameZh": "暴雨",
+    "nameEn": "Torrential Rain",
+    "faction": "neutral",
+    "type": "weather",
+    "hero": false,
+    "rows": [],
+    "strength": 0,
+    "copies": 2,
+    "abilities": [
+      {
+        "id": "weather",
+        "weather": "rain"
+      }
+    ],
+    "abilityZh": "天气：将双方攻城行所有单位的战力降为 1（0 战力不变），持续到本小局结束。",
+    "abilityEn": "Weather: Sets the strength of all Siege units to 1 for both players."
+  },
+  "trebuchet": {
+    "id": "trebuchet",
+    "idx": 70,
+    "nameZh": "投石机",
+    "nameEn": "Trebuchet",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "siege"
+    ],
+    "strength": 6,
+    "copies": 2,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "triss-merigold": {
+    "id": "triss-merigold",
+    "idx": 71,
+    "nameZh": "特莉丝·梅莉葛德",
+    "nameEn": "Triss Merigold",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 7,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "vampire-bruxa": {
+    "id": "vampire-bruxa",
+    "idx": 72,
+    "nameZh": "吸血鬼：布鲁克莎",
+    "nameEn": "Vampire: Bruxa",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Vampire",
+        "targets": [
+          "vampire-bruxa",
+          "vampire-ekimmara",
+          "vampire-fleder",
+          "vampire-garkain",
+          "vampire-katakan"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「吸血鬼」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Vampire\" in your deck and play them instantly."
+  },
+  "vampire-ekimmara": {
+    "id": "vampire-ekimmara",
+    "idx": 73,
+    "nameZh": "吸血鬼：埃基马拉",
+    "nameEn": "Vampire: Ekimmara",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Vampire",
+        "targets": [
+          "vampire-bruxa",
+          "vampire-ekimmara",
+          "vampire-fleder",
+          "vampire-garkain",
+          "vampire-katakan"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「吸血鬼」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Vampire\" in your deck and play them instantly."
+  },
+  "vampire-fleder": {
+    "id": "vampire-fleder",
+    "idx": 74,
+    "nameZh": "吸血鬼：弗莱德",
+    "nameEn": "Vampire: Fleder",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Vampire",
+        "targets": [
+          "vampire-bruxa",
+          "vampire-ekimmara",
+          "vampire-fleder",
+          "vampire-garkain",
+          "vampire-katakan"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「吸血鬼」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Vampire\" in your deck and play them instantly."
+  },
+  "vampire-garkain": {
+    "id": "vampire-garkain",
+    "idx": 75,
+    "nameZh": "吸血鬼：加尔坎",
+    "nameEn": "Vampire: Garkain",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Vampire",
+        "targets": [
+          "vampire-bruxa",
+          "vampire-ekimmara",
+          "vampire-fleder",
+          "vampire-garkain",
+          "vampire-katakan"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「吸血鬼」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Vampire\" in your deck and play them instantly."
+  },
+  "vampire-katakan": {
+    "id": "vampire-katakan",
+    "idx": 76,
+    "nameZh": "吸血鬼：卡塔坎",
+    "nameEn": "Vampire: Katakan",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "muster",
+        "from": [
+          "deck"
+        ],
+        "group": "Vampire",
+        "targets": [
+          "vampire-bruxa",
+          "vampire-ekimmara",
+          "vampire-fleder",
+          "vampire-garkain",
+          "vampire-katakan"
+        ]
+      }
+    ],
+    "abilityZh": "集结：从牌堆找出所有「吸血鬼」卡牌并立即打出。",
+    "abilityEn": "Muster: Find all cards named \"Vampire\" in your deck and play them instantly."
+  },
+  "vattier-de-rideaux": {
+    "id": "vattier-de-rideaux",
+    "idx": 77,
+    "nameZh": "瓦提尔·德·里多",
+    "nameEn": "Vattier de Rideaux",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "spy",
+        "draw": 2
+      }
+    ],
+    "abilityZh": "间谍：置于对方战场，战力计入对方；己方从牌堆抽 2 张牌。",
+    "abilityEn": "Spy: Place on your opponent's battlefield (counts towards their total) and draw 2 cards from your deck."
+  },
+  "vernon-roche": {
+    "id": "vernon-roche",
+    "idx": 78,
+    "nameZh": "弗农·罗契",
+    "nameEn": "Vernon Roche",
+    "faction": "northern-realms",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "close"
+    ],
+    "strength": 10,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities."
+  },
+  "vesemir": {
+    "id": "vesemir",
+    "idx": 79,
+    "nameZh": "维瑟米尔",
+    "nameEn": "Vesemir",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 6,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "vrihedd-brigade-recruit": {
+    "id": "vrihedd-brigade-recruit",
+    "idx": 80,
+    "nameZh": "弗利赫德旅新兵",
+    "nameEn": "Vrihedd Brigade Recruit",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 4,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "vrihedd-brigade-veteran": {
+    "id": "vrihedd-brigade-veteran",
+    "idx": 81,
+    "nameZh": "弗利赫德旅老兵",
+    "nameEn": "Vrihedd Brigade Veteran",
+    "faction": "scoiatael",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 2,
+    "abilities": [],
+    "abilityZh": "灵巧：可放置在近战行或远程行，落子后不可移动。",
+    "abilityEn": "Agile: Can be placed in either the Close or Ranged row. Cannot be moved once placed."
+  },
+  "werewolf": {
+    "id": "werewolf",
+    "idx": 82,
+    "nameZh": "狼人",
+    "nameEn": "Werewolf",
+    "faction": "monsters",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  },
+  "yennefer-of-vengerberg": {
+    "id": "yennefer-of-vengerberg",
+    "idx": 83,
+    "nameZh": "温格堡的叶奈法",
+    "nameEn": "Yennefer of Vengerberg",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": true,
+    "rows": [
+      "ranged"
+    ],
+    "strength": 7,
+    "copies": 1,
+    "abilities": [
+      {
+        "id": "hero"
+      },
+      {
+        "id": "medic"
+      }
+    ],
+    "abilityZh": "英雄：不受任何特殊牌或能力影响。\n医师：从己方弃牌堆选择 1 张非英雄单位牌，立即打出。",
+    "abilityEn": "Hero: Not affected by any Special Cards or abilities.\nMedic: Choose one non-Hero unit card from your discard pile and play it instantly."
+  },
+  "young-emissary": {
+    "id": "young-emissary",
+    "idx": 84,
+    "nameZh": "年轻使节",
+    "nameEn": "Young Emissary",
+    "faction": "nilfgaard",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 2,
+    "abilities": [
+      {
+        "id": "bond"
+      }
+    ],
+    "abilityZh": "紧缚：同一行每有 1 张同名单位，自身战力 ×同名单位数量。",
+    "abilityEn": "Tight Bond: This card's strength is multiplied by the number of cards with the same name in its row."
+  },
+  "zoltan-chivay": {
+    "id": "zoltan-chivay",
+    "idx": 85,
+    "nameZh": "卓尔坦·齐瓦",
+    "nameEn": "Zoltan Chivay",
+    "faction": "neutral",
+    "type": "unit",
+    "hero": false,
+    "rows": [
+      "close"
+    ],
+    "strength": 5,
+    "copies": 1,
+    "abilities": [],
+    "abilityZh": "",
+    "abilityEn": ""
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "emhyr-var-emreis-his-imperial-majesty": {
+    "id": "emhyr-var-emreis-his-imperial-majesty",
+    "nameZh": "恩希尔·瓦·恩瑞斯：皇帝陛下",
+    "nameEn": "Emhyr var Emreis: His Imperial Majesty",
+    "faction": "nilfgaard",
+    "ability": [
+      {
+        "id": "playWeatherFromDeck",
+        "weather": "rain"
+      }
+    ],
+    "abilityZh": "从牌堆打出「暴雨」。",
+    "abilityEn": "Pick a Torrential Rain card from your deck and play it instantly.",
+    "quoteZh": "帕薇塔死时，苍天为之落泪。但不会为我落泪。",
+    "quoteEn": "\"The skies wept when my Pavetta died. They will not weep for me.\"",
+    "idx": 0
+  },
+  "emhyr-var-emreis-the-white-flame": {
+    "id": "emhyr-var-emreis-the-white-flame",
+    "nameZh": "恩希尔·瓦·恩瑞斯：白色火焰",
+    "nameEn": "Emhyr var Emreis: The White Flame",
+    "faction": "nilfgaard",
+    "ability": [
+      {
+        "id": "cancelLeader"
+      }
+    ],
+    "abilityZh": "被动：取消对手的领袖能力。若双方都带此领袖，则双方领袖能力都被取消。",
+    "abilityEn": "Cancel your opponent's Leader Ability.",
+    "quoteZh": "剑，不过是统治者众多工具中的一件。",
+    "quoteEn": "\"A sword is but one of many tools at a rules's disposal.\"",
+    "idx": 1
+  },
+  "eredin-breacc-glas-the-treacherous": {
+    "id": "eredin-breacc-glas-the-treacherous",
+    "nameZh": "埃瑞丁·布莱克·格拉斯：诡诈者",
+    "nameEn": "Eredin Bréacc Glas: The Treacherous",
+    "faction": "monsters",
+    "ability": [
+      {
+        "id": "doubleSpy",
+        "passive": true
+      }
+    ],
+    "abilityZh": "被动：所有间谍牌战力 ×2（影响双方）。",
+    "abilityEn": "Doubles the strength of all spy cards (affects both players).",
+    "quoteZh": "我很享受。你是我的玩具。",
+    "quoteEn": "\"I'm enjoying this. You are my toy.\"",
+    "idx": 2
+  },
+  "eredin-commander-of-the-red-riders": {
+    "id": "eredin-commander-of-the-red-riders",
+    "nameZh": "埃瑞丁：赤骑指挥官",
+    "nameEn": "Eredin: Commander of the Red Riders",
+    "faction": "monsters",
+    "ability": [
+      {
+        "id": "leaderHorn",
+        "row": "close"
+      }
+    ],
+    "abilityZh": "己方近战行获得号角效果（该行已有号角则无效）。",
+    "abilityEn": "Double the strength of all your Close Combat units (unless a Commander's horn is also present on that row).",
+    "quoteZh": "拿出点尊严来。你知道这会怎么收场。",
+    "quoteEn": "\"Have some dignity. You know how this will end.\"",
+    "idx": 3
+  },
+  "foltest-lord-commander-of-the-north": {
+    "id": "foltest-lord-commander-of-the-north",
+    "nameZh": "弗尔泰斯特：北方总指挥官",
+    "nameEn": "Foltest: Lord Commander of the North",
+    "faction": "northern-realms",
+    "ability": [
+      {
+        "id": "clearWeather"
+      }
+    ],
+    "abilityZh": "清除当前所有天气效果。",
+    "abilityEn": "Clear any weather effects (resulting from Biting Frost, Torrential Rain or Impenetrable Fog cards) in play.",
+    "quoteZh": "去他的谋士和他们的算盘。我只信我士兵的刀锋。",
+    "quoteEn": "\"Sod advisors and their schemes. I place my trust in my soldiers' blades.\"",
+    "idx": 4
+  },
+  "foltest-the-siegemaster": {
+    "id": "foltest-the-siegemaster",
+    "nameZh": "弗尔泰斯特：攻城大师",
+    "nameEn": "Foltest: The Siegemaster",
+    "faction": "northern-realms",
+    "ability": [
+      {
+        "id": "leaderHorn",
+        "row": "siege"
+      }
+    ],
+    "abilityZh": "己方攻城行获得号角效果（该行已有号角则无效）。",
+    "abilityEn": "Doubles the strength of all your Siege units (unless a Commander's Horn is also present on that row).",
+    "quoteZh": "瞄准得好的弩炮，摧毁的不只是敌人的城墙，还有他们的士气。",
+    "quoteEn": "\"A well-aimed ballista razes not just the enemy's walls, but his morale as well.\"",
+    "idx": 5
+  },
+  "francesca-findabair-daisy-of-the-valley": {
+    "id": "francesca-findabair-daisy-of-the-valley",
+    "nameZh": "法兰茜丝卡·芬达贝：山谷雏菊",
+    "nameEn": "Francesca Findabair: Daisy of the Valley",
+    "faction": "scoiatael",
+    "ability": [
+      {
+        "id": "drawExtraStart",
+        "count": 1,
+        "passive": true
+      }
+    ],
+    "abilityZh": "被动：开局额外抽 1 张牌。",
+    "abilityEn": "Draw an extra card at the beginning of the battle",
+    "quoteZh": "上古种族遗忘的东西，比人类能学会的还多。",
+    "quoteEn": "\"The Elder Races have forgotten more than humans can ever hope to know.\"",
+    "idx": 6
+  },
+  "francesca-findabair-the-beautiful": {
+    "id": "francesca-findabair-the-beautiful",
+    "nameZh": "法兰茜丝卡·芬达贝：美人",
+    "nameEn": "Francesca Findabair: The Beautiful",
+    "faction": "scoiatael",
+    "ability": [
+      {
+        "id": "leaderHorn",
+        "row": "ranged"
+      }
+    ],
+    "abilityZh": "己方远程行获得号角效果（该行已有号角则无效）。",
+    "abilityEn": "Doubles the strength of all your Ranged Combat units (unless a Commander's Horn is also present on that row).",
+    "quoteZh": "别让我的美貌扰乱你的瞄准。",
+    "quoteEn": "\"Do not let my beauty distract your aim.\"",
+    "idx": 7
+  }
+}
