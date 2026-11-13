@@ -3,8 +3,8 @@
     <!-- Top Control Bar -->
     <header class="top-bar">
       <div class="brand">
-        <span class="brand-badge">GWENT · RL</span>
-        <span class="brand-sub">对弈与 AI 决策透视平台</span>
+        <span class="brand-badge">GWENT · AI</span>
+        <span class="brand-sub">yzxISUya</span>
       </div>
 
       <div class="controls-row">
