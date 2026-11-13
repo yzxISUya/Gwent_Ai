@@ -420,8 +420,6 @@ const passAction = PASS_ACTION;
 
 const aiOptions = [
   { value: 'onnx:ppo-v1', label: 'RL · Masked PPO (ONNX)', url: '/models/ppo_v1.onnx' },
-  { value: 'onnx:dmc-v1', label: 'RL · DouZero DMC (ONNX)', url: '/models/dmc_v1.onnx' },
-  { value: 'ismcts', label: 'ISMCTS · 信息集蒙特卡洛搜索', url: null },
   { value: 'heuristic-hard', label: '启发式 AI · 困难 (1-ply 推演)', url: null },
   { value: 'heuristic-normal', label: '启发式 AI · 普通', url: null },
   { value: 'heuristic-easy', label: '启发式 AI · 简单', url: null },
@@ -637,12 +635,16 @@ function applyStep(action, actorTag = '') {
 
 function commitHumanAction(action) {
   if (!isHumanTurn.value) return;
+  if (autoTimer) {
+    clearTimeout(autoTimer);
+    autoTimer = null;
+  }
   applyStep(action, ' 玩家');
 }
 
 function getModelSpecForPlayer(pIdx) {
   const val = pIdx === 0 ? aiModel0.value : aiModel1.value;
-  const found = aiOptions.find((o) => o.value === val) || aiOptions[2];
+  const found = aiOptions.find((o) => o.value === val) || aiOptions[0];
   return found;
 }
 

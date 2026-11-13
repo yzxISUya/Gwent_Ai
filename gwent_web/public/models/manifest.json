@@ -8,15 +8,6 @@
       "obsDim": 689,
       "actionDim": 91,
       "description": "Masked PPO + PFSP 种群自对弈模型（浏览器端 ONNX 实时推理）"
-    },
-    {
-      "id": "dmc-v1",
-      "name": "RL · DouZero DMC (Monte-Carlo)",
-      "algo": "dmc",
-      "file": "/models/dmc_v1.onnx",
-      "obsDim": 689,
-      "actionDim": 91,
-      "description": "DouZero 风格深度蒙特卡洛 Q 网络模型（浏览器端 ONNX 实时推理）"
     }
   ]
 }

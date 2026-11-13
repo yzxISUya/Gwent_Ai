@@ -1,7 +1,7 @@
 """
-Exports a trained Gwent PyTorch model (GwentPolicyValueNet or GwentDMCNet)
-to ONNX format for in-browser inference with `onnxruntime-web`, and validates
-numerical parity with `onnxruntime`.
+Exports a trained Gwent PyTorch model (GwentPolicyValueNet) to ONNX format
+for in-browser inference with `onnxruntime-web`, and validates numerical parity
+with `onnxruntime`.
 """
 from __future__ import annotations
 import argparse
@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 from gwent_rl.engine import OBS_DIM, ACTION_DIM
-from gwent_rl.agents.networks import GwentPolicyValueNet, GwentDMCNet
+from gwent_rl.agents.networks import GwentPolicyValueNet
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MODELS_DIR = ROOT / "gwent_web" / "public" / "models"
@@ -20,10 +20,10 @@ DEFAULT_MODELS_DIR = ROOT / "gwent_web" / "public" / "models"
 def export_to_onnx(
     model: torch.nn.Module,
     output_path: str | Path,
-    model_id: str,
-    model_name: str,
-    algo: str,
-    description: str = "",
+    model_id: str = "ppo-v1",
+    model_name: str = "RL · Masked PPO (Self-Play)",
+    algo: str = "ppo",
+    description: str = "Masked PPO + PFSP 种群自对弈模型（浏览器端 ONNX 实时推理）",
 ) -> Path:
     out_file = Path(output_path)
     out_file.parent.mkdir(parents=True, exist_ok=True)
@@ -92,21 +92,16 @@ def export_to_onnx(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Export Gwent PyTorch checkpoint to ONNX")
+    parser = argparse.ArgumentParser(description="Export Gwent PyTorch PPO checkpoint to ONNX")
     parser.add_argument("--ckpt", type=str, required=True, help="Path to .pt state_dict")
-    parser.add_argument("--algo", type=str, choices=["ppo", "dmc"], default="ppo")
     parser.add_argument("--hidden-dim", type=int, default=512)
     parser.add_argument("--num-blocks", type=int, default=3)
     parser.add_argument("--id", type=str, default="ppo-v1")
-    parser.add_argument("--name", type=str, default="Masked PPO (Self-Play)")
+    parser.add_argument("--name", type=str, default="RL · Masked PPO (Self-Play)")
     parser.add_argument("--out", type=str, default=str(DEFAULT_MODELS_DIR / "ppo_v1.onnx"))
     args = parser.parse_args()
 
-    if args.algo == "ppo":
-        model = GwentPolicyValueNet(hidden_dim=args.hidden_dim, num_blocks=args.num_blocks)
-    else:
-        model = GwentDMCNet(hidden_dim=args.hidden_dim, num_blocks=args.num_blocks)
-
+    model = GwentPolicyValueNet(hidden_dim=args.hidden_dim, num_blocks=args.num_blocks)
     state = torch.load(args.ckpt, map_location="cpu", weights_only=True)
     model.load_state_dict(state)
     export_to_onnx(
@@ -114,7 +109,7 @@ def main() -> None:
         output_path=args.out,
         model_id=args.id,
         model_name=args.name,
-        algo=args.algo,
+        algo="ppo",
     )
 
 

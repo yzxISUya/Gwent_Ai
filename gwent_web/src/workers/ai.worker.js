@@ -1,21 +1,20 @@
 /**
  * WebWorker for Asynchronous Gwent AI Inference & X-Ray Analysis.
  * Supports:
- *  1. ONNX Runtime Web models (`ppo-v1`, `dmc-v1`, etc.)
- *  2. Client-side ISMCTS (Information-Set Monte-Carlo Tree Search)
- *  3. Built-in Heuristic AI (`heuristic-hard`, `heuristic-normal`, `heuristic-easy`)
+ *  1. ONNX Runtime Web Masked PPO models (`ppo-v1`)
+ *  2. Built-in Heuristic AI (`heuristic-hard`, `heuristic-normal`, `heuristic-easy`)
  */
 import * as ort from 'onnxruntime-web';
 import {
   GwentEngine,
   HeuristicAI,
-  RngState,
   OBS_DIM,
   ACTION_DIM,
 } from '../engine/engine.js';
 
-// Configure ONNX Runtime Web WASM paths via CDN fallback if needed
+// Configure ONNX Runtime Web WASM paths via CDN fallback
 ort.env.wasm.numThreads = 1;
+ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
 
 const sessionCache = new Map();
 
@@ -101,77 +100,6 @@ function evaluateHeuristicDistribution(eng, difficulty = 'hard') {
   return { bestAction, probs, value };
 }
 
-function runISMCTS(eng, simulations = 48) {
-  const p = eng.turn;
-  const legalRoot = eng.getLegalActions();
-  // Use fast 0-ply 'normal' heuristic for MCTS rollouts to prevent 2800+ nested engine.clone() calls
-  const bot = new HeuristicAI('normal', eng.rng.state ^ 0xabcdef);
-  if (legalRoot.length <= 1) {
-    return evaluateHeuristicDistribution(eng, 'hard');
-  }
-
-  const rng = new RngState(eng.rng.state ^ 0x98765432);
-  const visits = new Map();
-  const valSums = new Map();
-  for (const a of legalRoot) {
-    visits.set(a, 0);
-    valSums.set(a, 0.0);
-  }
-
-  for (let simIdx = 0; simIdx < simulations; simIdx++) {
-    // Determinize opponent hand & deck, preserving cards during mulligan
-    const sim = eng.clone();
-    sim.rng = new RngState(rng.randInt(0x7fffffff));
-    const opp = sim.players[1 - p];
-    const oppHandLen = opp.hand.length;
-    const pool = rng.shuffle([...opp.hand, ...opp.deck, ...(opp.mulligan_discards || [])]);
-    opp.hand = pool.slice(0, oppHandLen);
-    opp.deck = pool.slice(oppHandLen);
-    opp.mulligan_discards = [];
-    sim.players[p].deck = rng.shuffle(sim.players[p].deck);
-
-    // UCB1 selection at root
-    const totalN = Math.max(1, simIdx);
-    let bestA = legalRoot[0];
-    let bestUcb = -1e9;
-    for (const a of legalRoot) {
-      const n = visits.get(a);
-      const q = n > 0 ? valSums.get(a) / n : 0.0;
-      const u = 1.4 * Math.sqrt(Math.log(totalN + 1) / (n + 1));
-      if (q + u > bestUcb) {
-        bestUcb = q + u;
-        bestA = a;
-      }
-    }
-
-    sim.step(bestA);
-    let rolloutDepth = 0;
-    while (!sim.done && rolloutDepth < 6) {
-      const rAct = bot.selectAction(sim);
-      sim.step(rAct);
-      rolloutDepth++;
-    }
-
-    const leafVal = Math.tanh(bot.evaluateState(sim, p) / 45.0);
-    visits.set(bestA, visits.get(bestA) + 1);
-    valSums.set(bestA, valSums.get(bestA) + leafVal);
-  }
-
-  const probs = new Float32Array(ACTION_DIM);
-  let bestAction = legalRoot[0];
-  let maxVisits = -1;
-  for (const a of legalRoot) {
-    const v = visits.get(a);
-    probs[a] = v / simulations;
-    if (v > maxVisits) {
-      maxVisits = v;
-      bestAction = a;
-    }
-  }
-  const value = maxVisits > 0 ? valSums.get(bestAction) / maxVisits : 0.0;
-  return { bestAction, probs, value };
-}
-
 self.onmessage = async (e) => {
   const { reqId, modelType, modelUrl, statePayload } = e.data;
   try {
@@ -201,10 +129,9 @@ self.onmessage = async (e) => {
           probs = new Float32Array(out.probs.data);
           value = Number(out.value.data[0]);
         } finally {
-          obsTensor.dispose?.();
-          maskTensor.dispose?.();
-          out?.probs?.dispose?.();
-          out?.value?.dispose?.();
+          // Dispose tensors if method exists
+          if (obsTensor && typeof obsTensor.dispose === 'function') obsTensor.dispose();
+          if (maskTensor && typeof maskTensor.dispose === 'function') maskTensor.dispose();
         }
 
         let maxP = -1;
@@ -215,26 +142,13 @@ self.onmessage = async (e) => {
           }
         }
       } catch (onnxErr) {
-        // Fallback to ISMCTS or Heuristic if .onnx file fails to load or inference fails
-        try {
-          const fallback = runISMCTS(eng, 48);
-          bestAction = fallback.bestAction;
-          probs = fallback.probs;
-          value = fallback.value;
-          engineUsed = `${modelType} (ISMCTS Fallback)`;
-        } catch (ismctsErr) {
-          const fallback = evaluateHeuristicDistribution(eng, 'hard');
-          bestAction = fallback.bestAction;
-          probs = fallback.probs;
-          value = fallback.value;
-          engineUsed = `${modelType} (Heuristic Fallback)`;
-        }
+        console.warn('[ONNX Inference Fallback to Heuristic]', onnxErr);
+        const fallback = evaluateHeuristicDistribution(eng, 'hard');
+        bestAction = fallback.bestAction;
+        probs = fallback.probs;
+        value = fallback.value;
+        engineUsed = `${modelType} (启发式兜底)`;
       }
-    } else if (modelType === 'ismcts') {
-      const res = runISMCTS(eng, 56);
-      bestAction = res.bestAction;
-      probs = res.probs;
-      value = res.value;
     } else {
       const diff = modelType.replace('heuristic-', '') || 'hard';
       const res = evaluateHeuristicDistribution(eng, diff);

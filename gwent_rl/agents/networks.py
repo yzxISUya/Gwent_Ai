@@ -1,6 +1,6 @@
 """
-Neural network architectures for Gwent RL (Masked PPO, DMC, and ISMCTS).
-All models support a unified ONNX export wrapper with signature:
+Neural network architectures for Gwent RL (Masked PPO).
+Supports unified ONNX export wrapper with signature:
   Inputs:
     - obs: float32[batch, 689]
     - mask: bool[batch, 91]
@@ -37,7 +37,7 @@ class ResMLPBlock(nn.Module):
 
 class GwentPolicyValueNet(nn.Module):
     """
-    Residual MLP Actor-Critic network for Masked PPO and ISMCTS.
+    Residual MLP Actor-Critic network for Masked PPO.
     """
 
     def __init__(
@@ -114,56 +114,3 @@ class GwentPolicyValueNet(nn.Module):
         entropy = -torch.sum(torch.where(bool_mask, probs * log_probs, torch.zeros_like(probs)), dim=-1)
         value = self.value_head(h).squeeze(-1)
         return action, log_prob, entropy, value
-
-
-class GwentDMCNet(nn.Module):
-    """
-    DouZero-style Deep Monte-Carlo Q-network.
-    Predicts expected terminal game return Q(s, a) in [-1, 1] for all actions.
-    """
-
-    def __init__(
-        self,
-        obs_dim: int = OBS_DIM,
-        action_dim: int = ACTION_DIM,
-        hidden_dim: int = 512,
-        num_blocks: int = 3,
-        temperature: float = 0.15,
-    ):
-        super().__init__()
-        self.obs_dim = obs_dim
-        self.action_dim = action_dim
-        self.temperature = temperature
-
-        self.input_proj = nn.Sequential(
-            nn.Linear(obs_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.GELU(),
-        )
-        self.blocks = nn.ModuleList([ResMLPBlock(hidden_dim) for _ in range(num_blocks)])
-        self.q_head = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.GELU(),
-            nn.Linear(hidden_dim // 2, action_dim),
-            nn.Tanh(),
-        )
-
-    def predict_q(self, obs: torch.Tensor) -> torch.Tensor:
-        h = self.input_proj(obs)
-        for block in self.blocks:
-            h = block(h)
-        return self.q_head(h)
-
-    def forward(self, obs: torch.Tensor, mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Unified ONNX export forward pass: converts masked Q(s, a) into
-        (probs, best_q_value) matching GwentPolicyValueNet's signature!
-        """
-        q = self.predict_q(obs)
-        bool_mask = mask.bool()
-        mask_val = -1e4 if obs.dtype == torch.float16 else -1e8
-        masked_q = q.masked_fill(~bool_mask, mask_val)
-        probs = F.softmax(masked_q / self.temperature, dim=-1)
-        best_q, _ = torch.max(masked_q, dim=-1, keepdim=True)
-        value = torch.clamp(best_q, -1.0, 1.0)
-        return probs, value

@@ -1,9 +1,8 @@
 """
 Standard RL Environment wrappers for Gwent:
 - `GwentSingleAgentEnv`: Single-agent perspective against a configurable opponent
-  (HeuristicAI, historical policy checkpoint, or random bot). Compatible with Gymnasium API.
-- `GwentSelfPlayEnv`: Two-player alternating turn environment for League Self-Play,
-  DouZero-style DMC, and ISMCTS.
+  (HeuristicAI, historical policy checkpoint, or random bot). Compatible with Gymnasium API
+  and tailored for Masked PPO + PFSP League self-play training.
 """
 from __future__ import annotations
 from typing import Any, Callable, Dict, Optional, Tuple
