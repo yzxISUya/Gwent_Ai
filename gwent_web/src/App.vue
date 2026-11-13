@@ -420,6 +420,7 @@ const passAction = PASS_ACTION;
 
 const aiOptions = [
   { value: 'onnx:ppo-v1', label: 'RL · Masked PPO (ONNX)', url: '/models/ppo_v1.onnx' },
+  { value: 'onnx-ismcts:ppo-v1', label: 'RL · Masked PPO + IS-MCTS (深度搜索)', url: '/models/ppo_v1.onnx' },
   { value: 'heuristic-hard', label: '启发式 AI · 困难 (1-ply 推演)', url: null },
   { value: 'heuristic-normal', label: '启发式 AI · 普通', url: null },
   { value: 'heuristic-easy', label: '启发式 AI · 简单', url: null },

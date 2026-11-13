@@ -5,18 +5,37 @@
  *  2. Built-in Heuristic AI (`heuristic-hard`, `heuristic-normal`, `heuristic-easy`)
  */
 import * as ort from 'onnxruntime-web';
+import ortWasmUrl from 'onnxruntime-web/ort-wasm-simd-threaded.jsep.wasm?url';
 import {
   GwentEngine,
   HeuristicAI,
   OBS_DIM,
   ACTION_DIM,
 } from '../engine/engine.js';
+import { GwentISMCTS } from './ismcts.js';
 
-// Configure ONNX Runtime Web WASM paths via CDN fallback
+// Use Vite-resolved local WASM URL alongside bundled JS glue (works in both dev and preview/build)
 ort.env.wasm.numThreads = 1;
-ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
 
 const sessionCache = new Map();
+
+async function runOnnxInference(sess, obsArr, maskBool) {
+  const obsTensor = new ort.Tensor('float32', obsArr, [1, OBS_DIM]);
+  const maskTensor = new ort.Tensor('bool', Uint8Array.from(maskBool, (b) => (b ? 1 : 0)), [1, ACTION_DIM]);
+  let out = null;
+  try {
+    out = await sess.run({ obs: obsTensor, mask: maskTensor });
+    const probs = new Float32Array(out.probs.data);
+    const value = Number(out.value.data[0]);
+    return { probs, value };
+  } finally {
+    if (obsTensor && typeof obsTensor.dispose === 'function') obsTensor.dispose();
+    if (maskTensor && typeof maskTensor.dispose === 'function') maskTensor.dispose();
+    if (out?.probs && typeof out.probs.dispose === 'function') out.probs.dispose();
+    if (out?.value && typeof out.value.dispose === 'function') out.value.dispose();
+  }
+}
 
 async function getOnnxSession(modelUrl) {
   if (sessionCache.has(modelUrl)) return sessionCache.get(modelUrl);
@@ -116,29 +135,40 @@ self.onmessage = async (e) => {
     let value = 0.0;
     let engineUsed = modelType;
 
-    if (modelType.startsWith('onnx:') && modelUrl) {
+    if ((modelType.startsWith('onnx:') || modelType.startsWith('onnx-ismcts:')) && modelUrl) {
       try {
         const sess = await getOnnxSession(modelUrl);
-        const obsArr = eng.encodeObservation(pov);
-        const maskBool = eng.getLegalMask();
-        const obsTensor = new ort.Tensor('float32', obsArr, [1, OBS_DIM]);
-        const maskTensor = new ort.Tensor('bool', Uint8Array.from(maskBool, (b) => (b ? 1 : 0)), [1, ACTION_DIM]);
-        let out = null;
-        try {
-          out = await sess.run({ obs: obsTensor, mask: maskTensor });
-          probs = new Float32Array(out.probs.data);
-          value = Number(out.value.data[0]);
-        } finally {
-          // Dispose tensors if method exists
-          if (obsTensor && typeof obsTensor.dispose === 'function') obsTensor.dispose();
-          if (maskTensor && typeof maskTensor.dispose === 'function') maskTensor.dispose();
-        }
-
-        let maxP = -1;
-        for (const a of legal) {
-          if (probs[a] > maxP) {
-            maxP = probs[a];
-            bestAction = a;
+        if (modelType.startsWith('onnx-ismcts:')) {
+          const mcts = new GwentISMCTS(
+            (obsArr, maskBool) => runOnnxInference(sess, obsArr, maskBool),
+            {
+              numSimulations: 96,
+              maxDepth: 6,
+              cPuct: 1.0,
+              maxChildren: 5,
+              fpuReduction: 0.15,
+              skipProbThreshold: 0.96,
+              seed: 2026 + (eng.history?.length || 0),
+            },
+          );
+          const searchRes = await mcts.search(eng, 450);
+          bestAction = searchRes.bestAction;
+          probs = searchRes.probs;
+          value = searchRes.value;
+          engineUsed =
+            searchRes.stats.sims > 0
+              ? `${modelType} (${searchRes.stats.sims} sims / ${searchRes.stats.elapsedMs.toFixed(0)}ms)`
+              : `${modelType} (0-ply forced)`;
+        } else {
+          const inf = await runOnnxInference(sess, eng.encodeObservation(pov), eng.getLegalMask());
+          probs = inf.probs;
+          value = inf.value;
+          let maxP = -1;
+          for (const a of legal) {
+            if (probs[a] > maxP) {
+              maxP = probs[a];
+              bestAction = a;
+            }
           }
         }
       } catch (onnxErr) {
