@@ -119,8 +119,31 @@ function evaluateHeuristicDistribution(eng, difficulty = 'hard') {
   return { bestAction, probs, value };
 }
 
+async function evaluateSpectatorP0WinRate(eng, spectatorUrl) {
+  const sess = await getOnnxSession(spectatorUrl);
+  const obs0 = eng.encodeObservation(0);
+  const obs1 = eng.encodeObservation(1);
+  const pairArr = new Float32Array(OBS_DIM * 2);
+  pairArr.set(obs0, 0);
+  pairArr.set(obs1, OBS_DIM);
+  const pairTensor = new ort.Tensor('float32', pairArr, [1, OBS_DIM * 2]);
+  let out = null;
+  try {
+    out = await sess.run({ obs_pair: pairTensor });
+    const p0WinProb = Math.max(0.0, Math.min(1.0, Number(out.p0_win_prob.data[0])));
+    return {
+      p0WinProb,
+      p0WinRate: p0WinProb * 100.0,
+      p0Value: 2.0 * p0WinProb - 1.0,
+    };
+  } finally {
+    if (pairTensor && typeof pairTensor.dispose === 'function') pairTensor.dispose();
+    if (out?.p0_win_prob && typeof out.p0_win_prob.dispose === 'function') out.p0_win_prob.dispose();
+  }
+}
+
 self.onmessage = async (e) => {
-  const { reqId, modelType, modelUrl, statePayload } = e.data;
+  const { reqId, modelType, modelUrl, enableSpectator = false, spectatorUrl = null, statePayload } = e.data;
   try {
     const eng = reconstructEngine(statePayload);
     if (eng.done) {
@@ -195,9 +218,22 @@ self.onmessage = async (e) => {
     }));
     candidates.sort((x, y) => y.prob - x.prob);
 
-    // Value in [-1, 1] from current player `pov`'s perspective -> P0 win rate in [0, 100]
-    const p0Value = pov === 0 ? value : -value;
-    const p0WinRate = Math.max(0, Math.min(100, (p0Value + 1.0) * 50.0));
+    // Isolated Spectator Win-Rate Evaluation (strictly zero effect on bestAction / probs / MCTS)
+    let p0WinRate = null;
+    let spectatorValue = null;
+    let spectatorActive = false;
+    let spectatorError = null;
+    if (enableSpectator && spectatorUrl) {
+      try {
+        const specRes = await evaluateSpectatorP0WinRate(eng, spectatorUrl);
+        p0WinRate = specRes.p0WinRate;
+        spectatorValue = specRes.p0Value;
+        spectatorActive = true;
+      } catch (specErr) {
+        spectatorError = String(specErr?.message || specErr);
+        console.warn('[Spectator ONNX Error]', specErr);
+      }
+    }
 
     self.postMessage({
       reqId,
@@ -205,7 +241,10 @@ self.onmessage = async (e) => {
       bestAction,
       bestLabel: eng.actionLabel(bestAction, 'zh'),
       value: Number(value),
-      p0WinRate: Number(p0WinRate),
+      p0WinRate: p0WinRate === null ? null : Number(p0WinRate),
+      spectatorValue: spectatorValue === null ? null : Number(spectatorValue),
+      spectatorActive,
+      spectatorError,
       topActions: candidates.slice(0, 6),
       engineUsed,
     });

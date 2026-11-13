@@ -22,6 +22,7 @@ from gwent_rl.engine.rng import RngState
 
 
 EvalFn = Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, float]]
+SpectatorEvalFn = Callable[[np.ndarray, np.ndarray], float]
 
 
 def compute_opp_unseen_counts(engine: GwentEngine, pov: int) -> List[int]:
@@ -136,8 +137,10 @@ class GwentISMCTS:
         fpu_reduction: float = 0.15,
         skip_prob_threshold: float = 0.96,
         seed: int = 42,
+        spectator_eval_fn: Optional[SpectatorEvalFn] = None,
     ):
         self.eval_fn = eval_fn
+        self.spectator_eval_fn = spectator_eval_fn
         self.num_simulations = num_simulations
         self.max_depth = max_depth
         self.c_puct = c_puct
@@ -158,6 +161,7 @@ class GwentISMCTS:
         eng: GwentEngine,
         root_pov: int,
         use_unseen_opp_union: bool = False,
+        is_root: bool = False,
     ) -> Tuple[np.ndarray, float]:
         turn = eng.turn
         obs = eng.encode_observation(turn)
@@ -178,7 +182,15 @@ class GwentISMCTS:
                     else:
                         mask[cidx] = True
         probs, val_turn = self.eval_fn(obs, mask)
-        val_root = float(val_turn) if turn == root_pov else -float(val_turn)
+        if (not is_root) and (self.spectator_eval_fn is not None):
+            # Inside determinized simulation world `sim_eng`, both hands are part of the sampled world.
+            obs0 = obs if turn == 0 else eng.encode_observation(0)
+            obs1 = obs if turn == 1 else eng.encode_observation(1)
+            p0_prob = float(self.spectator_eval_fn(obs0, obs1))
+            val_p0 = 2.0 * p0_prob - 1.0
+            val_root = val_p0 if root_pov == 0 else -val_p0
+        else:
+            val_root = float(val_turn) if turn == root_pov else -float(val_turn)
         return probs, val_root
 
     def search(
@@ -191,8 +203,8 @@ class GwentISMCTS:
         if not legal:
             return PASS_ACTION, np.zeros(ACTION_DIM, dtype=np.float32), 0.0, {"sims": 0, "nn_evals": 0, "elapsed_ms": 0.0}
 
-        # Root evaluation (always 1 NN call to establish calibrated root prior & baseline value)
-        root_probs, root_val = self._evaluate_node(engine, root_pov, use_unseen_opp_union=False)
+        # Root evaluation (always 1 NN call to establish calibrated root prior & baseline value, strictly non-cheating)
+        root_probs, root_val = self._evaluate_node(engine, root_pov, use_unseen_opp_union=False, is_root=True)
         nn_evals = 1
 
         if len(legal) == 1 or self.num_simulations <= 0:
@@ -361,3 +373,20 @@ class OnnxEvaluator:
             {"obs": obs[None, :].astype(np.float32, copy=False), "mask": mask[None, :].astype(bool, copy=False)},
         )
         return probs[0], float(val.reshape(-1)[0])
+
+
+class SpectatorOnnxEvaluator:
+    """Callable `(obs0, obs1) -> p0_win_prob` backed by spectator_v1.onnx CPU session."""
+
+    def __init__(self, onnx_path: str):
+        import onnxruntime as ort
+
+        opts = ort.SessionOptions()
+        opts.intra_op_num_threads = 1
+        opts.inter_op_num_threads = 1
+        self.sess = ort.InferenceSession(onnx_path, sess_options=opts, providers=["CPUExecutionProvider"])
+
+    def __call__(self, obs0: np.ndarray, obs1: np.ndarray) -> float:
+        pair = np.concatenate([obs0, obs1], axis=0)[None, :].astype(np.float32, copy=False)
+        prob = self.sess.run(["p0_win_prob"], {"obs_pair": pair})[0]
+        return float(prob.reshape(-1)[0])

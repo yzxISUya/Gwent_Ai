@@ -119,3 +119,55 @@ class GwentPolicyValueNet(nn.Module):
         if return_logit:
             return action, log_prob, entropy, value, value_logit
         return action, log_prob, entropy, value
+
+
+class GwentSpectatorValueNet(nn.Module):
+    """
+    Antisymmetric zero-sum spectator value network taking concatenated observations
+    [obs(0), obs(1)] of shape [batch, 2 * obs_dim] (= [batch, 1390]).
+
+    Computes:
+      logit(s) = 0.5 * (f_theta(obs0, obs1) - f_theta(obs1, obs0))
+      p0_win_prob = sigmoid(logit(s))
+
+    Mathematically guarantees P(P0) + P(P1) == 1 and exact antisymmetry under 0/1 swap.
+    """
+
+    def __init__(
+        self,
+        obs_dim: int = OBS_DIM,
+        hidden_dim: int = 256,
+        num_blocks: int = 2,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+        self.obs_dim = obs_dim
+        in_dim = obs_dim * 2
+        self.input_proj = nn.Sequential(
+            nn.Linear(in_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
+        )
+        self.blocks = nn.ModuleList(
+            [ResMLPBlock(hidden_dim, dropout=dropout) for _ in range(num_blocks)]
+        )
+        self.head = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.GELU(),
+            nn.Linear(hidden_dim // 2, 1),
+        )
+
+    def _raw_score(self, obs_pair: torch.Tensor) -> torch.Tensor:
+        h = self.input_proj(obs_pair)
+        for block in self.blocks:
+            h = block(h)
+        return self.head(h)
+
+    def logit(self, obs_pair: torch.Tensor) -> torch.Tensor:
+        obs0 = obs_pair[:, : self.obs_dim]
+        obs1 = obs_pair[:, self.obs_dim :]
+        obs_swap = torch.cat([obs1, obs0], dim=-1)
+        return 0.5 * (self._raw_score(obs_pair) - self._raw_score(obs_swap))
+
+    def forward(self, obs_pair: torch.Tensor) -> torch.Tensor:
+        return torch.sigmoid(self.logit(obs_pair))

@@ -314,30 +314,48 @@
             <span class="engine-tag">{{ xray.engineUsed || '就绪' }}</span>
           </div>
 
-          <!-- Win-Rate Evaluation Bar -->
-          <div class="eval-section">
-            <div class="eval-labels">
-              <span class="p0-lbl">P0 胜率 {{ xray.p0WinRate.toFixed(1) }}%</span>
-              <span class="val-lbl">V(s) = {{ xray.value >= 0 ? '+' : '' }}{{ xray.value.toFixed(3) }}</span>
-              <span class="p1-lbl">P1 胜率 {{ (100 - xray.p0WinRate).toFixed(1) }}%</span>
-            </div>
-            <div class="eval-bar-track">
-              <div class="eval-bar-fill" :style="{ width: xray.p0WinRate + '%' }"></div>
-            </div>
-          </div>
+          <label class="spectator-toggle">
+            <input type="checkbox" v-model="spectatorEnabled" @change="onSpectatorToggle" />
+            <span class="toggle-title">上帝视角（含双方隐藏手牌）</span>
+            <span class="toggle-state" :class="{ on: spectatorEnabled }">
+              {{ spectatorEnabled ? '已开启' : '已关闭' }}
+            </span>
+          </label>
 
-          <!-- Win-Rate History Sparkline -->
-          <div class="sparkline-box" v-if="winRateHistory.length > 1">
-            <div class="spark-caption">对局实时胜率走势 (P0 视角 0%~100%)</div>
-            <svg viewBox="0 0 260 60" class="spark-svg">
-              <line x1="0" y1="30" x2="260" y2="30" stroke="#e5e5e5" stroke-width="1" />
-              <polyline
-                fill="none"
-                stroke=var(--accent-70)
-                stroke-width="1.75"
-                :points="sparklinePoints"
-              />
-            </svg>
+          <!-- Win-Rate Evaluation Bar (Spectator Mode Only) -->
+          <template v-if="spectatorEnabled">
+            <div class="eval-section" v-if="xray.p0WinRate !== null">
+              <div class="eval-labels">
+                <span class="p0-lbl">P0 胜率 {{ xray.p0WinRate.toFixed(1) }}%</span>
+                <span class="val-lbl">
+                  V₀(s) = {{ (xray.spectatorValue ?? 0) >= 0 ? '+' : '' }}{{ (xray.spectatorValue ?? 0).toFixed(3) }}
+                </span>
+                <span class="p1-lbl">P1 胜率 {{ (100 - xray.p0WinRate).toFixed(1) }}%</span>
+              </div>
+              <div class="eval-bar-track">
+                <div class="eval-bar-fill" :style="{ width: xray.p0WinRate + '%' }"></div>
+              </div>
+            </div>
+            <div v-else class="spectator-off-hint">
+              {{ xray.spectatorError ? `上帝视角模型加载失败: ${xray.spectatorError}` : '上帝视角胜率计算中...' }}
+            </div>
+
+            <!-- Win-Rate History Sparkline -->
+            <div class="sparkline-box" v-if="winRateHistory.length > 1">
+              <div class="spark-caption">对局实时胜率走势 (上帝视角 P0 0%~100%)</div>
+              <svg viewBox="0 0 260 60" class="spark-svg">
+                <line x1="0" y1="30" x2="260" y2="30" stroke="#e5e5e5" stroke-width="1" />
+                <polyline
+                  fill="none"
+                  stroke="var(--accent-70)"
+                  stroke-width="1.75"
+                  :points="sparklinePoints"
+                />
+              </svg>
+            </div>
+          </template>
+          <div v-else class="spectator-off-hint">
+            已关闭全局胜率评估（公平模式：不加载上帝视角模型，仅展示当前行动方候选动作概率）
           </div>
 
           <!-- Top-K Candidate Actions Distribution -->
@@ -426,6 +444,8 @@ const aiOptions = [
   { value: 'heuristic-easy', label: '启发式 AI · 简单', url: null },
 ];
 
+const SPECTATOR_MODEL_URL = '/models/spectator_v1.onnx';
+
 const gameMode = ref('human-vs-ai');
 const preset0 = ref('nr-temeria');
 const preset1 = ref('ng-white-flame');
@@ -433,11 +453,12 @@ const aiModel0 = ref('onnx:ppo-v1');
 const aiModel1 = ref('onnx:ppo-v1');
 const seedInput = ref(20261106);
 const autoPlay = ref(false);
+const spectatorEnabled = ref(false);
 
 let engine = new GwentEngine(seedInput.value, preset0.value, preset1.value);
 const actionHistory = ref([]);
 const matchLogs = ref([]);
-const winRateHistory = ref([50.0]);
+const winRateHistory = ref([]);
 
 const view = reactive({
   round: 1,
@@ -486,7 +507,10 @@ const xray = reactive({
   bestAction: null,
   bestLabel: '',
   value: 0.0,
-  p0WinRate: 50.0,
+  p0WinRate: null,
+  spectatorValue: null,
+  spectatorActive: false,
+  spectatorError: null,
   topActions: [],
   engineUsed: 'onnx:ppo-v1',
 });
@@ -574,13 +598,24 @@ const sparklinePoints = computed(() => {
   const arr = winRateHistory.value;
   if (arr.length < 2) return '0,30 260,30';
   return arr
-    .map((wr, idx) => {
+    .map((pt, idx) => {
       const x = (idx / (arr.length - 1)) * 260;
-      const y = 56 - (wr / 100) * 52;
+      const y = 56 - (pt.wr / 100) * 52;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(' ');
 });
+
+function recordWinRatePoint(step, wr) {
+  if (wr === null || wr === undefined || Number.isNaN(wr)) return;
+  const arr = winRateHistory.value;
+  const existingIdx = arr.findIndex((p) => p.step === step);
+  if (existingIdx >= 0) {
+    arr[existingIdx] = { step, wr };
+  } else {
+    arr.push({ step, wr });
+  }
+}
 
 function isHandCardPlayable(card) {
   if (view.subPhase === 'MULLIGAN') return view.legalMask[card.idx];
@@ -654,8 +689,17 @@ function requestXRayAndAi() {
     if (engine.done) {
       xray.topActions = [];
       xray.bestAction = null;
-      xray.p0WinRate = engine.winner === 0 ? 100 : engine.winner === 1 ? 0 : 50;
-      winRateHistory.value.push(xray.p0WinRate);
+      if (spectatorEnabled.value) {
+        const finalWr = engine.winner === 0 ? 100.0 : engine.winner === 1 ? 0.0 : 50.0;
+        xray.p0WinRate = finalWr;
+        xray.spectatorValue = engine.winner === 0 ? 1.0 : engine.winner === 1 ? -1.0 : 0.0;
+        xray.spectatorActive = true;
+        recordWinRatePoint(actionHistory.value.length, finalWr);
+      } else {
+        xray.p0WinRate = null;
+        xray.spectatorValue = null;
+        xray.spectatorActive = false;
+      }
     }
     return;
   }
@@ -665,6 +709,8 @@ function requestXRayAndAi() {
     reqId,
     modelType: spec.value,
     modelUrl: spec.url,
+    enableSpectator: spectatorEnabled.value,
+    spectatorUrl: spectatorEnabled.value ? SPECTATOR_MODEL_URL : null,
     statePayload: {
       seed: seedInput.value,
       preset0: preset0.value,
@@ -686,8 +732,38 @@ function toggleAutoPlay() {
   }
 }
 
+function onSpectatorToggle() {
+  if (autoTimer) {
+    clearTimeout(autoTimer);
+    autoTimer = null;
+  }
+  if (!spectatorEnabled.value) {
+    winRateHistory.value = [];
+    xray.p0WinRate = null;
+    xray.spectatorValue = null;
+    xray.spectatorActive = false;
+    xray.spectatorError = null;
+  } else if (engine.done) {
+    requestXRayAndAi();
+    return;
+  }
+  if (!engine.done) {
+    requestXRayAndAi();
+  }
+}
+
 function onModeChange() {
   autoPlay.value = false;
+  if (autoTimer) {
+    clearTimeout(autoTimer);
+    autoTimer = null;
+  }
+  spectatorEnabled.value = gameMode.value === 'ai-vs-ai';
+  winRateHistory.value = [];
+  xray.p0WinRate = null;
+  xray.spectatorValue = null;
+  xray.spectatorActive = false;
+  xray.spectatorError = null;
   requestXRayAndAi();
 }
 
@@ -697,7 +773,11 @@ function startNewGame(newSeed = null) {
   engine.reset(seedInput.value, preset0.value, preset1.value);
   actionHistory.value = [];
   matchLogs.value = [`—— 对局开始 (Seed: ${seedInput.value}) ——`];
-  winRateHistory.value = [50.0];
+  winRateHistory.value = [];
+  xray.p0WinRate = null;
+  xray.spectatorValue = null;
+  xray.spectatorActive = false;
+  xray.spectatorError = null;
   syncView();
   requestXRayAndAi();
 }
@@ -772,10 +852,19 @@ onMounted(() => {
     xray.bestAction = data.bestAction;
     xray.bestLabel = data.bestLabel;
     xray.value = data.value;
-    xray.p0WinRate = data.p0WinRate;
     xray.topActions = data.topActions || [];
     xray.engineUsed = data.engineUsed;
-    winRateHistory.value.push(data.p0WinRate);
+    xray.spectatorError = data.spectatorError || null;
+    if (spectatorEnabled.value && data.spectatorActive && data.p0WinRate !== null) {
+      xray.p0WinRate = data.p0WinRate;
+      xray.spectatorValue = data.spectatorValue;
+      xray.spectatorActive = true;
+      recordWinRatePoint(actionHistory.value.length, data.p0WinRate);
+    } else {
+      xray.p0WinRate = null;
+      xray.spectatorValue = null;
+      xray.spectatorActive = false;
+    }
 
     const shouldAiAct =
       (gameMode.value === 'human-vs-ai' && view.turn === 1) ||

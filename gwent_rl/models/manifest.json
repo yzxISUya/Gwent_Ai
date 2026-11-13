@@ -9,5 +9,14 @@
       "actionDim": 91,
       "description": "Masked PPO + PFSP 全阵营 8 卡组自对弈模型（浏览器端 ONNX 实时推理）"
     }
-  ]
+  ],
+  "spectator": {
+    "id": "spectator-v1",
+    "name": "RL · Spectator Value Net (Zero-Sum)",
+    "algo": "antisymmetric-bce-mlp",
+    "file": "/models/spectator_v1.onnx",
+    "obsDim": 695,
+    "obsPairDim": 1390,
+    "description": "上帝视角反对称零和胜率评估模型（输入 [obs(0), obs(1)] 1390 维，严格保证 P(P0)+P(P1)=1）"
+  }
 }

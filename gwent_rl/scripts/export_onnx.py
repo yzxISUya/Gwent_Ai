@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 from gwent_rl.engine import OBS_DIM, ACTION_DIM
-from gwent_rl.agents.networks import GwentPolicyValueNet
+from gwent_rl.agents.networks import GwentPolicyValueNet, GwentSpectatorValueNet
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MODELS_DIR = ROOT / "gwent_web" / "public" / "models"
@@ -101,6 +101,92 @@ def export_to_onnx(
     models_list = [m for m in manifest.get("models", []) if m.get("id") != model_id]
     models_list.append(entry)
     manifest["models"] = models_list
+    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    return out_file
+
+
+def export_spectator_to_onnx(
+    model: torch.nn.Module,
+    output_path: str | Path,
+    model_id: str = "spectator-v1",
+    model_name: str = "RL · Spectator Value Net (Zero-Sum)",
+    algo: str = "antisymmetric-bce-mlp",
+    description: str = "上帝视角反对称零和胜率评估模型（输入 [obs(0), obs(1)] 1390 维，严格保证 P(P0)+P(P1)=1）",
+) -> Path:
+    out_file = Path(output_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    ext_data_file = Path(str(out_file) + ".data")
+    if ext_data_file.exists():
+        ext_data_file.unlink()
+    model_cpu = model.to("cpu").eval()
+
+    pair_dim = OBS_DIM * 2
+    dummy_pair = torch.zeros((1, pair_dim), dtype=torch.float32)
+
+    torch.onnx.export(
+        model_cpu,
+        (dummy_pair,),
+        str(out_file),
+        export_params=True,
+        opset_version=17,
+        do_constant_folding=True,
+        input_names=["obs_pair"],
+        output_names=["p0_win_prob"],
+        dynamic_axes={
+            "obs_pair": {0: "batch"},
+            "p0_win_prob": {0: "batch"},
+        },
+        dynamo=False,
+    )
+
+    if ext_data_file.exists():
+        try:
+            import onnx
+
+            onnx_model = onnx.load(str(out_file), load_external_data=True)
+            onnx.save_model(onnx_model, str(out_file), save_as_external_data=False)
+            ext_data_file.unlink()
+        except Exception as e:
+            print(f"[ONNX Warning] Failed to inline {ext_data_file.name}: {e}")
+
+    try:
+        import onnxruntime as ort
+
+        sess = ort.InferenceSession(str(out_file), providers=["CPUExecutionProvider"])
+        rng = np.random.default_rng(42)
+        test_a = rng.normal(size=(8, OBS_DIM)).astype(np.float32)
+        test_b = rng.normal(size=(8, OBS_DIM)).astype(np.float32)
+        pair_ab = np.concatenate([test_a, test_b], axis=1)
+        pair_ba = np.concatenate([test_b, test_a], axis=1)
+
+        with torch.no_grad():
+            pt_ab = model_cpu(torch.from_numpy(pair_ab)).numpy()
+        ort_ab = sess.run(["p0_win_prob"], {"obs_pair": pair_ab})[0]
+        ort_ba = sess.run(["p0_win_prob"], {"obs_pair": pair_ba})[0]
+        max_diff = float(np.max(np.abs(pt_ab - ort_ab)))
+        sym_err = float(np.max(np.abs(ort_ab + ort_ba - 1.0)))
+        print(
+            f"[ONNX Verified] {out_file.name} | max_diff={max_diff:.2e}, zero_sum_err={sym_err:.2e}"
+        )
+    except ImportError:
+        print(f"[ONNX Exported] {out_file.name} (onnxruntime not installed for verification)")
+
+    manifest_path = out_file.parent / "manifest.json"
+    manifest = {"models": []}
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    manifest["spectator"] = {
+        "id": model_id,
+        "name": model_name,
+        "algo": algo,
+        "file": f"/models/{out_file.name}",
+        "obsDim": OBS_DIM,
+        "obsPairDim": pair_dim,
+        "description": description,
+    }
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     return out_file
 
