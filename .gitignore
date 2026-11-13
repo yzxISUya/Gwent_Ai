@@ -4,6 +4,7 @@ __pycache__/
 checkpoints/
 gwent_rl/tests/_parity_cases.json
 _run_parity_check.mjs
+results/
 
 .ipynb_checkpoints/
 
