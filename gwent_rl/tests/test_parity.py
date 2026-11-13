@@ -63,7 +63,7 @@ def run_parity_check(num_games: int = 100) -> None:
                         "mask": mask,
                         "obsSum": float(np.sum(obs)),
                         "obsMax": float(np.max(obs)),
-                        "obsSlice": [float(x) for x in obs[:60]],
+                        "obs": [float(x) for x in obs],
                     }
                 )
 
@@ -134,9 +134,12 @@ for (let cIdx = 0; cIdx < cases.length; cIdx++) {
       if (Math.abs(obsSum - snap.obsSum) > 1e-3) {
         throw new Error(`Case ${cIdx} step ${s}: obsSum mismatch JS=${obsSum} PY=${snap.obsSum}`);
       }
-      for (let i = 0; i < snap.obsSlice.length; i++) {
-        if (Math.abs(obs[i] - snap.obsSlice[i]) > 1e-5) {
-          throw new Error(`Case ${cIdx} step ${s}: obs[${i}] mismatch JS=${obs[i]} PY=${snap.obsSlice[i]}`);
+      if (obs.length !== snap.obs.length) {
+        throw new Error(`Case ${cIdx} step ${s}: obs length mismatch JS=${obs.length} PY=${snap.obs.length}`);
+      }
+      for (let i = 0; i < snap.obs.length; i++) {
+        if (Math.abs(obs[i] - snap.obs[i]) > 1e-5) {
+          throw new Error(`Case ${cIdx} step ${s}: obs[${i}] mismatch JS=${obs[i]} PY=${snap.obs[i]}`);
         }
       }
     }
@@ -199,7 +202,7 @@ def run_throughput_and_ai_benchmark() -> None:
             steps += 1
         games += 1
     dt = time.perf_counter() - t0
-    print(f"Single-core Python throughput (with 689-dim obs encoding): {steps / dt:,.0f} steps/sec ({games / dt:,.1f} games/sec)")
+    print(f"Single-core Python throughput (with {OBS_DIM}-dim obs encoding): {steps / dt:,.0f} steps/sec ({games / dt:,.1f} games/sec)")
 
     # Benchmark Hard AI vs Normal AI vs Easy AI using Duplicate Paired-Seed Round-Robin
     # on Stage-1 Core 2x2 Deck Pool (nr-temeria & ng-white-flame, 200 duplicate pairs = 400 games per matchup)

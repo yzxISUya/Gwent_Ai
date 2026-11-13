@@ -5,7 +5,7 @@
       "name": "RL · Masked PPO (Self-Play)",
       "algo": "ppo",
       "file": "/models/ppo_v1.onnx",
-      "obsDim": 689,
+      "obsDim": 695,
       "actionDim": 91,
       "description": "Masked PPO + PFSP 种群自对弈模型（浏览器端 ONNX 实时推理）"
     }

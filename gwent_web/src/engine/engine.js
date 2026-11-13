@@ -1,7 +1,7 @@
 /**
  * Isomorphic Gwent (The Witcher 3) Core Engine & RL Encoder in ES Modules.
  * Bit-for-bit identical in state transitions, PRNG, 91-dim Legal Action Mask,
- * and 689-dim Float32 Observation Vector to `gwent_rl/engine/engine.py`.
+ * and 695-dim Float32 Observation Vector to `gwent_rl/engine/engine.py`.
  */
 
 import {
@@ -244,6 +244,25 @@ export class GwentEngine {
       const wKind = ab.weather;
       if (this.weather[wKind]) return false;
       return pl.deck.some((inst) => CARDS_BY_IDX[inst.card_idx]._weather_kind === wKind);
+    }
+    return false;
+  }
+
+  isPublicLeaderAvailable(pIdx) {
+    const pl = this.players[pIdx];
+    if (pl.passed || pl.leader_used || pl.leader_canceled) return false;
+    const ldata = LEADERS_BY_IDX[pl.leader_idx];
+    if (ldata._is_passive) return false;
+    const abId = ldata._ab_id;
+    const ab = ldata._ab;
+    if (abId === 'clearWeather') {
+      return this.weather.frost || this.weather.fog || this.weather.rain;
+    }
+    if (abId === 'leaderHorn') {
+      return pl.row_horn[ab.row] === null;
+    }
+    if (abId === 'playWeatherFromDeck') {
+      return !this.weather[ab.weather];
     }
     return false;
   }
@@ -759,7 +778,7 @@ export class GwentEngine {
     const opp = this.players[1 - pov];
     const obs = new Float32Array(OBS_DIM);
 
-    // Block 0: Global & Meta State (51 dims)
+    // Block 0: Global & Tactical Meta State (57 dims, offset 0..56)
     if (this.round >= 1 && this.round <= 3) obs[this.round - 1] = 1.0;
     const subMap = { MULLIGAN: 0, PLAY: 1, MEDIC: 2, DECOY: 3 };
     if (this.sub_phase in subMap) obs[3 + subMap[this.sub_phase]] = 1.0;
@@ -788,7 +807,7 @@ export class GwentEngine {
     obs[23] = opp.graveyard.length / 30.0;
 
     obs[24] = this.isLeaderAvailable(pov) ? 1.0 : 0.0;
-    obs[25] = this.isLeaderAvailable(1 - pov) ? 1.0 : 0.0;
+    obs[25] = this.isPublicLeaderAvailable(1 - pov) ? 1.0 : 0.0;
 
     obs[26 + FACTION_TO_IDX[me.faction]] = 1.0;
     obs[30 + FACTION_TO_IDX[opp.faction]] = 1.0;
@@ -796,9 +815,11 @@ export class GwentEngine {
     obs[42 + opp.leader_idx] = 1.0;
     obs[50] = me.mulligan_left / 2.0;
 
-    // Block 1: 6 Board Rows Summary (36 dims, offset 51..86)
-    let offset = 51;
-    for (const pl of [me, opp]) {
+    // Block 1: 6 Board Rows Summary (36 dims, offset 57..92) + Tactical Scorch Stats
+    let offset = 57;
+    let globalMaxNonHero = 0;
+    const cachedRowPowers = [];
+    for (const [isMe, pl] of [[true, me], [false, opp]]) {
       for (const r of ROW_KEYS) {
         const hasHorn = pl.row_horn[r] !== null;
         const wActive = this.weather[WEATHER_FOR_ROW[r]];
@@ -808,6 +829,7 @@ export class GwentEngine {
           wActive,
           this.double_spy
         );
+        cachedRowPowers.push([isMe, pl.rows[r], powers]);
         let maxNonHero = 0;
         let heroSum = 0;
         for (let i = 0; i < pl.rows[r].length; i++) {
@@ -816,6 +838,7 @@ export class GwentEngine {
           if (CARDS_BY_IDX[inst.card_idx]._is_hero) heroSum += pw;
           else if (pw > maxNonHero) maxNonHero = pw;
         }
+        if (maxNonHero > globalMaxNonHero) globalMaxNonHero = maxNonHero;
         obs[offset] = rTot / 60.0;
         obs[offset + 1] = pl.rows[r].length / 10.0;
         obs[offset + 2] = hornActive ? 1.0 : 0.0;
@@ -826,25 +849,49 @@ export class GwentEngine {
       }
     }
 
-    // Block 2: Card Multiset Counts (7 * NUM_CARDS = 602 dims, offset 87..688)
-    const b0 = 87;
+    let scorchMeBurn = 0;
+    let scorchOppBurn = 0;
+    if (globalMaxNonHero > 0) {
+      for (const [isMe, rowInsts, powers] of cachedRowPowers) {
+        for (let i = 0; i < rowInsts.length; i++) {
+          const pw = powers[i];
+          if (!CARDS_BY_IDX[rowInsts[i].card_idx]._is_hero && pw === globalMaxNonHero) {
+            if (isMe) scorchMeBurn += pw;
+            else scorchOppBurn += pw;
+          }
+        }
+      }
+    }
+
+    obs[51] = this.first_player === pov ? 1.0 : 0.0;
+    obs[52] = globalMaxNonHero / 20.0;
+    obs[53] = scorchMeBurn / 30.0;
+    obs[54] = scorchOppBurn / 30.0;
+    obs[55] = Math.tanh((scorchOppBurn - scorchMeBurn) / 20.0);
+    obs[56] =
+      sMe > sOpp || (sMe === sOpp && me.faction === 'nilfgaard' && opp.faction !== 'nilfgaard')
+        ? 1.0
+        : 0.0;
+
+    // Block 2: Card Multiset Counts (7 * NUM_CARDS = 602 dims, offset 93..694)
+    const b0 = 93;
     const b1 = b0 + NUM_CARDS;
     const b2 = b1 + NUM_CARDS;
     const b3 = b2 + NUM_CARDS;
     const b4 = b3 + NUM_CARDS;
     const b5 = b4 + NUM_CARDS;
     const b6 = b5 + NUM_CARDS;
-    const step = 1.0 / 3.0;
+    const zoneStep = 1.0 / 5.0;
 
-    for (const inst of me.hand) obs[b0 + inst.card_idx] += step;
-    for (const inst of me.deck) obs[b1 + inst.card_idx] += step;
-    for (const inst of me.mulligan_discards) obs[b1 + inst.card_idx] += step;
+    for (const inst of me.hand) obs[b0 + inst.card_idx] += zoneStep;
+    for (const inst of me.deck) obs[b1 + inst.card_idx] += zoneStep;
+    for (const inst of me.mulligan_discards) obs[b1 + inst.card_idx] += zoneStep;
     for (const r of ROW_KEYS) {
-      for (const inst of me.rows[r]) obs[b2 + inst.card_idx] += step;
-      for (const inst of opp.rows[r]) obs[b3 + inst.card_idx] += step;
+      for (const inst of me.rows[r]) obs[b2 + inst.card_idx] += zoneStep;
+      for (const inst of opp.rows[r]) obs[b3 + inst.card_idx] += zoneStep;
     }
-    for (const inst of me.graveyard) obs[b4 + inst.card_idx] += step;
-    for (const inst of opp.graveyard) obs[b5 + inst.card_idx] += step;
+    for (const inst of me.graveyard) obs[b4 + inst.card_idx] += zoneStep;
+    for (const inst of opp.graveyard) obs[b5 + inst.card_idx] += zoneStep;
 
     // Opponent unseen deduced strictly from public board/graveyard and known initial deck multiset:
     // opp_unseen = (me.initial_counts + opp.initial_counts) - total_visible - my_unseen
@@ -864,9 +911,10 @@ export class GwentEngine {
     for (const inst of me.deck) myUnseen[inst.card_idx]++;
     for (const inst of me.mulligan_discards) myUnseen[inst.card_idx]++;
 
+    const unseenStep = 1.0 / 10.0;
     for (let c = 0; c < NUM_CARDS; c++) {
       const unseenC = (me.initial_counts[c] + opp.initial_counts[c]) - visCounts[c] - myUnseen[c];
-      if (unseenC > 0) obs[b6 + c] = unseenC * step;
+      if (unseenC > 0) obs[b6 + c] = unseenC * unseenStep;
     }
 
     return obs;

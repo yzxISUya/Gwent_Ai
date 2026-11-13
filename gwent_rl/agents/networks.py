@@ -2,11 +2,11 @@
 Neural network architectures for Gwent RL (Masked PPO).
 Supports unified ONNX export wrapper with signature:
   Inputs:
-    - obs: float32[batch, 689]
+    - obs: float32[batch, 695]
     - mask: bool[batch, 91]
   Outputs:
     - probs: float32[batch, 91]   (masked action probability distribution)
-    - value: float32[batch, 1]    (estimated win value in [-1, 1], convertible to win rate)
+    - value: float32[batch, 1]    (calibrated win value 2*P(win)-1 in (-1, 1))
 """
 from __future__ import annotations
 from typing import Tuple, Optional
@@ -67,7 +67,6 @@ class GwentPolicyValueNet(nn.Module):
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.GELU(),
             nn.Linear(hidden_dim // 2, 1),
-            nn.Tanh(),
         )
 
     def encode(self, obs: torch.Tensor) -> torch.Tensor:
@@ -79,6 +78,7 @@ class GwentPolicyValueNet(nn.Module):
     def forward(self, obs: torch.Tensor, mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass returning (probs, value) suitable for direct ONNX export.
+        `value` is mapped from raw win-probability logit via 2 * sigmoid(z) - 1 in (-1, 1).
         """
         h = self.encode(obs)
         logits = self.policy_head(h)
@@ -86,7 +86,8 @@ class GwentPolicyValueNet(nn.Module):
         mask_val = -1e4 if obs.dtype == torch.float16 else -1e8
         masked_logits = logits.masked_fill(~bool_mask, mask_val)
         probs = F.softmax(masked_logits, dim=-1)
-        value = self.value_head(h)
+        value_logit = self.value_head(h)
+        value = 2.0 * torch.sigmoid(value_logit) - 1.0
         return probs, value
 
     def get_action_and_value(
@@ -95,7 +96,8 @@ class GwentPolicyValueNet(nn.Module):
         mask: torch.Tensor,
         action: Optional[torch.Tensor] = None,
         deterministic: bool = False,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        return_logit: bool = False,
+    ):
         h = self.encode(obs)
         logits = self.policy_head(h)
         bool_mask = mask.bool()
@@ -112,5 +114,8 @@ class GwentPolicyValueNet(nn.Module):
         probs = F.softmax(masked_logits, dim=-1)
         log_probs = torch.log(probs + 1e-12)
         entropy = -torch.sum(torch.where(bool_mask, probs * log_probs, torch.zeros_like(probs)), dim=-1)
-        value = self.value_head(h).squeeze(-1)
+        value_logit = self.value_head(h).squeeze(-1)
+        value = 2.0 * torch.sigmoid(value_logit) - 1.0
+        if return_logit:
+            return action, log_prob, entropy, value, value_logit
         return action, log_prob, entropy, value

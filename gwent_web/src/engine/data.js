@@ -22,7 +22,7 @@ export const ACTION_DIM = SCHEMA.actionSpace.totalDim;
 export const HORN_ROW_OFFSET = SCHEMA.actionSpace.hornRowOffset;
 export const USE_LEADER_ACTION = SCHEMA.actionSpace.useLeaderAction;
 export const PASS_ACTION = SCHEMA.actionSpace.passOrFinishAction;
-export const OBS_DIM = 51 + 36 + 7 * NUM_CARDS;
+export const OBS_DIM = 57 + 36 + 7 * NUM_CARDS;
 
 export const FACTION_TO_IDX = {};
 SCHEMA.factions.forEach((fid, i) => {

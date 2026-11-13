@@ -27,6 +27,9 @@ def export_to_onnx(
 ) -> Path:
     out_file = Path(output_path)
     out_file.parent.mkdir(parents=True, exist_ok=True)
+    ext_data_file = Path(str(out_file) + ".data")
+    if ext_data_file.exists():
+        ext_data_file.unlink()
     model_cpu = model.to("cpu").eval()
 
     dummy_obs = torch.zeros((1, OBS_DIM), dtype=torch.float32)
@@ -48,6 +51,17 @@ def export_to_onnx(
             "value": {0: "batch"},
         },
     )
+
+    # Collapse any sidecar .onnx.data created by PyTorch dynamo exporter into a single browser-loadable .onnx file
+    if ext_data_file.exists():
+        try:
+            import onnx
+
+            onnx_model = onnx.load(str(out_file), load_external_data=True)
+            onnx.save_model(onnx_model, str(out_file), save_as_external_data=False)
+            ext_data_file.unlink()
+        except Exception as e:
+            print(f"[ONNX Warning] Failed to inline {ext_data_file.name}: {e}")
 
     # Verify with onnxruntime if available
     try:

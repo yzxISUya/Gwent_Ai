@@ -33,7 +33,7 @@ STARTING_HAND = 10
 MULLIGAN_MAX = 2
 STARTING_GEMS = 2
 MAX_ROUNDS = 3
-OBS_DIM = 51 + 36 + 7 * NUM_CARDS  # 689 dims for NUM_CARDS=86
+OBS_DIM = 57 + 36 + 7 * NUM_CARDS  # 695 dims for NUM_CARDS=86
 
 
 class PlayerState:
@@ -308,6 +308,24 @@ class GwentEngine:
             if self.weather.get(w_kind, False):
                 return False
             return any(CARDS_BY_IDX[inst["card_idx"]]["_weather_kind"] == w_kind for inst in pl.deck)
+        return False
+
+    def is_public_leader_available(self, p_idx: int) -> bool:
+        """Publicly observable leader availability (never peeks into hidden deck/hand)."""
+        pl = self.players[p_idx]
+        if pl.passed or pl.leader_used or pl.leader_canceled:
+            return False
+        ldata = LEADERS_BY_IDX[pl.leader_idx]
+        if ldata["_is_passive"]:
+            return False
+        ab_id = ldata["_ab_id"]
+        ab = ldata["_ab"]
+        if ab_id == "clearWeather":
+            return any(self.weather.values())
+        if ab_id == "leaderHorn":
+            return pl.row_horn[ab["row"]] is None
+        if ab_id == "playWeatherFromDeck":
+            return not self.weather.get(ab["weather"], False)
         return False
 
     def _has_decoy_target(self, p_idx: int) -> bool:
@@ -784,7 +802,7 @@ class GwentEngine:
 
     def encode_observation(self, pov: Optional[int] = None) -> np.ndarray:
         """
-        Deterministic 689-dim float32 observation vector from player `pov`'s perspective.
+        Deterministic 695-dim float32 observation vector from player `pov`'s perspective.
         """
         if pov is None:
             pov = self.turn
@@ -792,7 +810,7 @@ class GwentEngine:
         opp = self.players[1 - pov]
         obs = np.zeros(OBS_DIM, dtype=np.float32)
 
-        # --- Block 0: Global & Meta State (51 dims) ---
+        # --- Block 0: Global & Tactical Meta State (57 dims, offset 0..56) ---
         if 1 <= self.round <= 3:
             obs[self.round - 1] = 1.0
         sub_map = {"MULLIGAN": 0, "PLAY": 1, "MEDIC": 2, "DECOY": 3}
@@ -823,7 +841,7 @@ class GwentEngine:
         obs[23] = len(opp.graveyard) / 30.0
 
         obs[24] = 1.0 if self.is_leader_available(pov) else 0.0
-        obs[25] = 1.0 if self.is_leader_available(1 - pov) else 0.0
+        obs[25] = 1.0 if self.is_public_leader_available(1 - pov) else 0.0
 
         obs[26 + FACTION_TO_IDX[me.faction]] = 1.0
         obs[30 + FACTION_TO_IDX[opp.faction]] = 1.0
@@ -831,15 +849,18 @@ class GwentEngine:
         obs[42 + opp.leader_idx] = 1.0
         obs[50] = me.mulligan_left / 2.0
 
-        # --- Block 1: 6 Board Rows Summary (36 dims, offset 51..86) ---
-        offset = 51
-        for pl in (me, opp):
+        # --- Block 1: 6 Board Rows Summary (36 dims, offset 57..92) + Tactical Scorch Stats ---
+        offset = 57
+        global_max_non_hero = 0
+        cached_row_powers: List[Tuple[bool, List[Dict[str, Any]], List[int]]] = []
+        for is_me, pl in ((True, me), (False, opp)):
             for r in ROW_KEYS:
                 has_horn = pl.row_horn[r] is not None
                 w_active = self.weather[WEATHER_FOR_ROW[r]]
                 powers, r_tot, horn_active = compute_row_powers(
                     pl.rows[r], has_horn, w_active, self.double_spy
                 )
+                cached_row_powers.append((is_me, pl.rows[r], powers))
                 max_non_hero = 0
                 hero_sum = 0
                 for inst, pw in zip(pl.rows[r], powers):
@@ -847,6 +868,8 @@ class GwentEngine:
                         hero_sum += pw
                     elif pw > max_non_hero:
                         max_non_hero = pw
+                if max_non_hero > global_max_non_hero:
+                    global_max_non_hero = max_non_hero
                 obs[offset] = r_tot / 60.0
                 obs[offset + 1] = len(pl.rows[r]) / 10.0
                 obs[offset + 2] = 1.0 if horn_active else 0.0
@@ -855,9 +878,29 @@ class GwentEngine:
                 obs[offset + 5] = hero_sum / 30.0
                 offset += 6
 
-        # --- Block 2: Card Multiset Counts (7 * NUM_CARDS = 602 dims, offset 87..688) ---
+        scorch_me_burn = 0
+        scorch_opp_burn = 0
+        if global_max_non_hero > 0:
+            for is_me, row_insts, powers in cached_row_powers:
+                for inst, pw in zip(row_insts, powers):
+                    if (not CARDS_BY_IDX[inst["card_idx"]]["_is_hero"]) and pw == global_max_non_hero:
+                        if is_me:
+                            scorch_me_burn += pw
+                        else:
+                            scorch_opp_burn += pw
+
+        obs[51] = 1.0 if self.first_player == pov else 0.0
+        obs[52] = global_max_non_hero / 20.0
+        obs[53] = scorch_me_burn / 30.0
+        obs[54] = scorch_opp_burn / 30.0
+        obs[55] = math.tanh((scorch_opp_burn - scorch_me_burn) / 20.0)
+        obs[56] = 1.0 if (
+            s_me > s_opp or (s_me == s_opp and me.faction == "nilfgaard" and opp.faction != "nilfgaard")
+        ) else 0.0
+
+        # --- Block 2: Card Multiset Counts (7 * NUM_CARDS = 602 dims, offset 93..694) ---
         # 0: my_hand, 1: my_deck, 2: my_board, 3: opp_board, 4: my_grave, 5: opp_grave, 6: opp_unseen
-        b0 = 87
+        b0 = 93
         b1 = b0 + NUM_CARDS
         b2 = b1 + NUM_CARDS
         b3 = b2 + NUM_CARDS
@@ -865,21 +908,22 @@ class GwentEngine:
         b5 = b4 + NUM_CARDS
         b6 = b5 + NUM_CARDS
 
+        zone_step = 1.0 / 5.0
         for inst in me.hand:
-            obs[b0 + inst["card_idx"]] += 1.0 / 3.0
+            obs[b0 + inst["card_idx"]] += zone_step
         for inst in me.deck:
-            obs[b1 + inst["card_idx"]] += 1.0 / 3.0
+            obs[b1 + inst["card_idx"]] += zone_step
         for inst in me.mulligan_discards:
-            obs[b1 + inst["card_idx"]] += 1.0 / 3.0
+            obs[b1 + inst["card_idx"]] += zone_step
         for r in ROW_KEYS:
             for inst in me.rows[r]:
-                obs[b2 + inst["card_idx"]] += 1.0 / 3.0
+                obs[b2 + inst["card_idx"]] += zone_step
             for inst in opp.rows[r]:
-                obs[b3 + inst["card_idx"]] += 1.0 / 3.0
+                obs[b3 + inst["card_idx"]] += zone_step
         for inst in me.graveyard:
-            obs[b4 + inst["card_idx"]] += 1.0 / 3.0
+            obs[b4 + inst["card_idx"]] += zone_step
         for inst in opp.graveyard:
-            obs[b5 + inst["card_idx"]] += 1.0 / 3.0
+            obs[b5 + inst["card_idx"]] += zone_step
 
         # Opponent unseen deduced strictly from public board/graveyard and known initial deck multiset:
         # opp_unseen = (me.initial_counts + opp.initial_counts) - total_visible - my_unseen
@@ -904,10 +948,10 @@ class GwentEngine:
         for inst in me.mulligan_discards:
             my_unseen[inst["card_idx"]] += 1
 
-        step = 1.0 / 3.0
+        unseen_step = 1.0 / 10.0
         for c in range(NUM_CARDS):
             unseen_c = (me.initial_counts[c] + opp.initial_counts[c]) - vis_counts[c] - my_unseen[c]
             if unseen_c > 0:
-                obs[b6 + c] = unseen_c * step
+                obs[b6 + c] = unseen_c * unseen_step
 
         return obs

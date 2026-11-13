@@ -76,6 +76,12 @@ CORE_DECK_PAIRS: tuple[tuple[str, str], ...] = tuple(
     (p0, p1) for p0 in CORE_PRESET_IDS for p1 in CORE_PRESET_IDS
 )
 
+# Full 8-Preset Pool across all 4 factions & 8 leaders (8x8 = 64 ordered matchups)
+ALL_PRESET_IDS: tuple[str, ...] = tuple(p["id"] for p in PRESET_LIST)
+ALL_DECK_PAIRS: tuple[tuple[str, str], ...] = tuple(
+    (p0, p1) for p0 in ALL_PRESET_IDS for p1 in ALL_PRESET_IDS
+)
+
 
 def expand_preset_deck(preset_id: str) -> List[str]:
     preset = PRESETS_BY_ID[preset_id]
