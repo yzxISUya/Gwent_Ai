@@ -586,7 +586,7 @@ def train_masked_ppo(
             snap_idx = global_update
             snap_seq = update // snap_interval
             is_det = (snap_seq % 2 == 0)
-            is_anch = (anchor_count < 4) and (snap_seq % 3 == 0)
+            is_anch = (snap_seq % 3 == 0)
             if is_anch:
                 anchor_count += 1
             league.add_snapshot(

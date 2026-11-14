@@ -24,13 +24,21 @@ class LeagueMember:
     games_played: int = 0
     wins_against_learner: int = 0
     losses_against_learner: int = 0
+    ema_learner_wr: float = 0.5
 
 
 class PFSPLeague:
-    def __init__(self, seed: int = 42, max_snapshots: int = 12, max_anchors: int = 4):
+    def __init__(
+        self,
+        seed: int = 42,
+        max_snapshots: int = 12,
+        max_anchors: int = 4,
+        ema_alpha: float = 0.02,
+    ):
         self.rng = RngState(seed)
         self.max_snapshots = max_snapshots
         self.max_anchors = max_anchors
+        self.ema_alpha = ema_alpha
         self.learner_elo: float = 1200.0
         self.members: Dict[str, LeagueMember] = {}
 
@@ -57,11 +65,15 @@ class PFSPLeague:
         recent_snaps = [k for k, m in self.members.items() if k.startswith("snap_") and not m.is_anchor]
 
         if is_anchor and len(anchor_snaps) >= self.max_anchors:
-            # Promote to recent pool eviction rather than dropping earliest anchor, or drop oldest anchor only if needed
-            is_anchor = False
+            # Keep the earliest foundational anchor (index 0) and demote the next oldest anchor
+            # into the sliding recent pool so milestone anchors span the full training horizon.
+            demote_idx = 1 if len(anchor_snaps) > 1 else 0
+            demoted_key = anchor_snaps.pop(demote_idx)
+            self.members[demoted_key].is_anchor = False
+            recent_snaps.append(demoted_key)
 
         max_recent = max(1, self.max_snapshots - len(anchor_snaps))
-        while not is_anchor and len(recent_snaps) >= max_recent and recent_snaps:
+        while len(recent_snaps) >= max_recent and recent_snaps:
             oldest = recent_snaps.pop(0)
             del self.members[oldest]
 
@@ -76,16 +88,16 @@ class PFSPLeague:
 
     def sample_opponent(self) -> LeagueMember:
         """
-        PFSP weighting with Laplace smoothing and strong-baseline floor:
-        f(p) = (1 - p)^1.5 + 0.15 where p = (wins + 1) / (total + 2).
+        PFSP weighting with EMA sliding win-rate (preventing early-training losses from
+        permanently skewing weights of long-lived anchors) and strong-baseline floor:
+        f(p) = (1 - p)^1.5 + 0.15 where p is the EMA learner win rate.
         Keeps heuristic_hard & heuristic_normal adequately represented to prevent forgetting.
         """
         keys = list(self.members.keys())
         weights = []
         for k in keys:
             m = self.members[k]
-            total = m.wins_against_learner + m.losses_against_learner
-            learner_wr = (m.losses_against_learner + 1.0) / (total + 2.0)
+            learner_wr = float(np.clip(m.ema_learner_wr, 0.0, 1.0))
             w = ((1.0 - learner_wr) ** 1.5) + 0.15
             if k == "heuristic_hard":
                 w = max(w, 0.35)
@@ -115,6 +127,8 @@ class PFSPLeague:
             score = 0.0
         else:
             score = 0.5
+
+        m.ema_learner_wr = (1.0 - self.ema_alpha) * m.ema_learner_wr + self.ema_alpha * score
 
         elo_diff = float(np.clip((m.elo - self.learner_elo) / 400.0, -10.0, 10.0))
         expected = 1.0 / (1.0 + 10.0 ** elo_diff)

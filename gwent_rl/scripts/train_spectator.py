@@ -42,13 +42,18 @@ def collect_mirror_selfplay(
     base_seed: int,
     num_envs: int = 256,
     greedy_ratio: float = 0.5,
+    max_samples_per_game: int = 0,
+    sample_seed: int = 2026,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run batched mirror self-play (`ppo_best.pt` vs `ppo_best.pt`) and collect
-    `(obs0, obs1, y_p0, turn)` for every decision step from `st=0` to terminal.
-    Stored as float16 for memory efficiency (~1.4 GB for 500k steps).
+    `(obs0, obs1, y_p0, turn)` across decision steps from `st=0` to terminal.
+    When `max_samples_per_game > 0`, performs stratified trajectory subsampling per game
+    to break intra-game state autocorrelation and prevent Epoch-1 deck-memorization overfitting.
+    Stored as float16 for memory efficiency.
     """
     ppo_model.eval()
+    sub_rng = np.random.default_rng(sample_seed)
     engines: List[GwentEngine] = []
     ep_obs0: List[List[np.ndarray]] = [[] for _ in range(num_envs)]
     ep_obs1: List[List[np.ndarray]] = [[] for _ in range(num_envs)]
@@ -123,10 +128,26 @@ def collect_mirror_selfplay(
                     y_val = 0.5
                 n_steps = len(ep_obs0[slot])
                 if n_steps > 0:
-                    all_obs0.append(np.stack(ep_obs0[slot], axis=0))
-                    all_obs1.append(np.stack(ep_obs1[slot], axis=0))
-                    all_y.append(np.full((n_steps,), y_val, dtype=np.float32))
-                    all_turns.append(np.array(ep_turn[slot], dtype=np.int8))
+                    game_o0 = np.stack(ep_obs0[slot], axis=0)
+                    game_o1 = np.stack(ep_obs1[slot], axis=0)
+                    game_t = np.array(ep_turn[slot], dtype=np.int8)
+                    if 0 < max_samples_per_game < n_steps:
+                        # Stratified sampling across the game trajectory (Mulligan -> R1 -> R2 -> R3)
+                        edges = np.linspace(0, n_steps, max_samples_per_game + 1, dtype=int)
+                        sel_idx = [
+                            int(sub_rng.integers(edges[k], max(edges[k] + 1, edges[k + 1])))
+                            for k in range(max_samples_per_game)
+                        ]
+                        game_o0 = game_o0[sel_idx]
+                        game_o1 = game_o1[sel_idx]
+                        game_t = game_t[sel_idx]
+                        n_keep = len(sel_idx)
+                    else:
+                        n_keep = n_steps
+                    all_obs0.append(game_o0)
+                    all_obs1.append(game_o1)
+                    all_y.append(np.full((n_keep,), y_val, dtype=np.float32))
+                    all_turns.append(game_t)
                 games_done += 1
                 if games_done % 2000 == 0 or games_done == num_games:
                     dt = time.perf_counter() - t0
@@ -315,7 +336,10 @@ def train_spectator(args: argparse.Namespace) -> None:
     for p in ppo_model.parameters():
         p.requires_grad = False
 
-    print(f"[1/4] Collecting {args.train_games:,} training games via frozen ppo_best mirror self-play...")
+    print(
+        f"[1/4] Collecting {args.train_games:,} training games via frozen ppo_best mirror self-play "
+        f"(samples_per_game={args.samples_per_game or 'all'})..."
+    )
     tr_obs0, tr_obs1, tr_y, _ = collect_mirror_selfplay(
         ppo_model=ppo_model,
         device=device,
@@ -323,10 +347,12 @@ def train_spectator(args: argparse.Namespace) -> None:
         base_seed=100_000,
         num_envs=args.num_envs,
         greedy_ratio=args.greedy_ratio,
+        max_samples_per_game=args.samples_per_game,
+        sample_seed=2026,
     )
     print(f"  Train dataset: {len(tr_y):,} state pairs | mean(y)={float(np.mean(tr_y)):.4f}")
 
-    print(f"[2/4] Collecting {args.val_games:,} independent validation games...")
+    print(f"[2/4] Collecting {args.val_games:,} independent validation games (full trajectories)...")
     va_obs0, va_obs1, va_y, va_turns = collect_mirror_selfplay(
         ppo_model=ppo_model,
         device=device,
@@ -334,6 +360,7 @@ def train_spectator(args: argparse.Namespace) -> None:
         base_seed=5_000_000,
         num_envs=args.num_envs,
         greedy_ratio=args.greedy_ratio,
+        max_samples_per_game=0,
     )
     print(f"  Val dataset: {len(va_y):,} state pairs | mean(y)={float(np.mean(va_y)):.4f}")
 
@@ -374,6 +401,8 @@ def train_spectator(args: argparse.Namespace) -> None:
             o0 = torch.from_numpy(tr_obs0[idx].astype(np.float32)).to(device)
             o1 = torch.from_numpy(tr_obs1[idx].astype(np.float32)).to(device)
             yb = torch.from_numpy(tr_y[idx]).unsqueeze(1).to(device)
+            if args.label_smoothing > 0.0:
+                yb = yb * (1.0 - args.label_smoothing) + 0.5 * args.label_smoothing
 
             logits = spec_model.logit(torch.cat([o0, o1], dim=1))
             loss = criterion(logits, yb)
@@ -499,6 +528,8 @@ def main() -> None:
     parser.add_argument("--ppo-ckpt", type=str, default=str(MODELS_DIR / "ppo_best.pt"))
     parser.add_argument("--train-games", type=int, default=24000)
     parser.add_argument("--val-games", type=int, default=2000)
+    parser.add_argument("--samples-per-game", type=int, default=8, help="Stratified steps per training game (0 = all steps)")
+    parser.add_argument("--label-smoothing", type=float, default=0.02, help="Label smoothing toward 0.5 to prevent overconfidence")
     parser.add_argument("--num-envs", type=int, default=256)
     parser.add_argument("--greedy-ratio", type=float, default=0.5)
     parser.add_argument("--hidden-dim", type=int, default=256)

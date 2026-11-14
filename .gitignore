@@ -3,7 +3,9 @@ __pycache__/
 
 checkpoints/
 gwent_rl/tests/_parity_cases.json
+gwent_rl/tests/_spec_parity.json
 _run_parity_check.mjs
+_run_spec_parity.mjs
 results/
 
 .ipynb_checkpoints/

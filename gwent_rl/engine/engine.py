@@ -749,7 +749,10 @@ class GwentEngine:
             }
         )
 
-        # Monsters faction passive: keep 1 random non-hero unit on board
+        # Monsters faction passive: keep 1 random non-hero unit on board.
+        # ADR (Witcher 3 Canonical Rule): Non-hero Spies played onto a Monsters player's board
+        # belong to `p.rows[r]` (with `owner = board_owner`) and are eligible to be retained by
+        # the Monsters passive or sent to `p.graveyard` at round end, matching original W3 Gwent.
         for p in self.players:
             if p.faction != "monsters":
                 continue
@@ -848,6 +851,8 @@ class GwentEngine:
         obs[34 + me.leader_idx] = 1.0
         obs[42 + opp.leader_idx] = 1.0
         obs[50] = me.mulligan_left / 2.0
+        # Note: obs[51..56] (first_player, scorch stats, winning flag) are populated right after
+        # the Block 1 row-power pass below to reuse `global_max_non_hero` & `cached_row_powers`.
 
         # --- Block 1: 6 Board Rows Summary (36 dims, offset 57..92) + Tactical Scorch Stats ---
         offset = 57
