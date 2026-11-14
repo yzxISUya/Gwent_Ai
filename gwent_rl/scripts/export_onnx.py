@@ -50,6 +50,7 @@ def export_to_onnx(
             "probs": {0: "batch"},
             "value": {0: "batch"},
         },
+        dynamo=False,
     )
 
     # Collapse any sidecar .onnx.data created by PyTorch dynamo exporter into a single browser-loadable .onnx file
