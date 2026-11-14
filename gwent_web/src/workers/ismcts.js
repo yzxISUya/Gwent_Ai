@@ -110,11 +110,15 @@ function createNode(turn) {
     turn,
     expanded: false,
     valueEst: 0.0,
+    valueSum: 0.0,
+    visits: 0,
     priors: null,
     edges: new Map(),
     children: new Map(),
   };
 }
+
+const DUMMY_ALL_TRUE_MASK = new Array(ACTION_DIM).fill(true);
 
 export class GwentISMCTS {
   constructor(
@@ -127,9 +131,11 @@ export class GwentISMCTS {
       fpuReduction = 0.15,
       skipProbThreshold = 0.96,
       seed = 42,
+      spectatorEvalFn = null,
     } = {},
   ) {
     this.evalFn = evalFn;
+    this.spectatorEvalFn = spectatorEvalFn;
     this.numSimulations = numSimulations;
     this.maxDepth = maxDepth;
     this.cPuct = cPuct;
@@ -145,14 +151,44 @@ export class GwentISMCTS {
     return 0.0;
   }
 
-  async _evaluateNode(eng, rootPov, useUnseenOppUnion = false) {
+  async _evaluateNode(eng, rootPov, useUnseenOppUnion = false, isRoot = false, needPriors = true) {
     const turn = eng.turn;
+    if (!needPriors) {
+      let valRoot;
+      if (!isRoot && this.spectatorEvalFn !== null) {
+        const obs0 = eng.encodeObservation(0);
+        const obs1 = eng.encodeObservation(1);
+        const p0Prob = Number(await this.spectatorEvalFn(obs0, obs1));
+        const valP0 = 2.0 * p0Prob - 1.0;
+        valRoot = rootPov === 0 ? valP0 : -valP0;
+      } else {
+        const { value: vRoot } = await this.evalFn(eng.encodeObservation(rootPov), DUMMY_ALL_TRUE_MASK);
+        const { value: vOpp } = await this.evalFn(eng.encodeObservation(1 - rootPov), DUMMY_ALL_TRUE_MASK);
+        valRoot = 0.5 * (Number(vRoot) - Number(vOpp));
+      }
+      return { probs: new Float32Array(ACTION_DIM), valRoot };
+    }
+
     const obs = eng.encodeObservation(turn);
     const mask = eng.getLegalMask();
     if (useUnseenOppUnion && turn !== rootPov && eng.sub_phase === 'PLAY') {
       const unseen = computeOppUnseenCounts(eng, rootPov);
+      let totU = 0;
+      for (let i = 0; i < NUM_CARDS; i++) totU += unseen[i];
+      const hLen = eng.players[turn].hand.length;
+      const dLen = Math.max(0, totU - hLen);
+      const hScale = totU > 0 ? (hLen / totU) * 0.2 : 0.0;
+      const dScale = totU > 0 ? (dLen / totU) * 0.2 : 0.0;
+      const b0 = 93;
+      const b1 = 93 + NUM_CARDS;
+
       for (let cidx = 0; cidx < NUM_CARDS; cidx++) {
-        if (unseen[cidx] <= 0) continue;
+        const cnt = unseen[cidx];
+        if (totU > 0) {
+          obs[b0 + cidx] = cnt * hScale;
+          obs[b1 + cidx] = cnt * dScale;
+        }
+        if (cnt <= 0) continue;
         const c = CARDS_BY_IDX[cidx];
         if (c.id === 'commander-s-horn') {
           const pl = eng.players[turn];
@@ -171,7 +207,24 @@ export class GwentISMCTS {
       }
     }
     const { probs, value } = await this.evalFn(obs, mask);
-    const valRoot = turn === rootPov ? Number(value) : -Number(value);
+    let valRoot;
+    if (!isRoot && this.spectatorEvalFn !== null) {
+      const obs0 = eng.encodeObservation(0);
+      const obs1 = eng.encodeObservation(1);
+      const p0Prob = Number(await this.spectatorEvalFn(obs0, obs1));
+      const valP0 = 2.0 * p0Prob - 1.0;
+      valRoot = rootPov === 0 ? valP0 : -valP0;
+    } else if (!isRoot) {
+      if (turn === rootPov) {
+        const { value: vOpp } = await this.evalFn(eng.encodeObservation(1 - rootPov), DUMMY_ALL_TRUE_MASK);
+        valRoot = 0.5 * (Number(value) - Number(vOpp));
+      } else {
+        const { value: vRoot } = await this.evalFn(eng.encodeObservation(rootPov), DUMMY_ALL_TRUE_MASK);
+        valRoot = 0.5 * (Number(vRoot) - Number(value));
+      }
+    } else {
+      valRoot = turn === rootPov ? Number(value) : -Number(value);
+    }
     return { probs, valRoot };
   }
 
@@ -187,7 +240,7 @@ export class GwentISMCTS {
       };
     }
 
-    const { probs: rootProbs, valRoot: rootVal } = await this._evaluateNode(engine, rootPov, false);
+    let { probs: rootProbs, valRoot: rootVal } = await this._evaluateNode(engine, rootPov, false, true, true);
     let nnEvals = 1;
 
     if (legal.length === 1 || this.numSimulations <= 0) {
@@ -213,9 +266,18 @@ export class GwentISMCTS {
       };
     }
 
+    if (this.spectatorEvalFn === null) {
+      const simRoot = determinizeEngine(engine, rootPov, this.rng);
+      const { value: oppV0 } = await this.evalFn(simRoot.encodeObservation(1 - rootPov), DUMMY_ALL_TRUE_MASK);
+      rootVal = 0.5 * (Number(rootVal) - Number(oppV0));
+      nnEvals += 1;
+    }
+
     const root = createNode(rootPov);
     root.expanded = true;
     root.valueEst = rootVal;
+    root.valueSum = rootVal;
+    root.visits = 1;
     root.priors = rootProbs;
 
     const rootCands = sortedLegal.slice(0, this.maxChildren);
@@ -247,9 +309,9 @@ export class GwentISMCTS {
           break;
         }
         if (depth >= this.maxDepth) {
-          const evRes = await this._evaluateNode(simEng, rootPov, false);
+          const evRes = await this._evaluateNode(simEng, rootPov, false, false, false);
           leafVal = evRes.valRoot;
-          nnEvals += 1;
+          nnEvals += this.spectatorEvalFn !== null ? 1 : 2;
           break;
         }
 
@@ -260,11 +322,13 @@ export class GwentISMCTS {
         }
 
         if (!node.expanded) {
-          const evRes = await this._evaluateNode(simEng, rootPov, true);
+          const evRes = await this._evaluateNode(simEng, rootPov, true, false, true);
           leafVal = evRes.valRoot;
-          nnEvals += 1;
+          nnEvals += this.spectatorEvalFn !== null ? 1 : 2;
           node.expanded = true;
           node.valueEst = leafVal;
+          node.valueSum = leafVal;
+          node.visits = 1;
           node.priors = evRes.probs;
 
           const candActions = simLegal
@@ -275,7 +339,7 @@ export class GwentISMCTS {
             candActions.push(PASS_ACTION);
           }
           for (const a of candActions) {
-            node.edges.set(a, createEdge(Number(evRes.probs[a])));
+            node.edges.set(a, createEdge(Math.max(Number(evRes.probs[a]), 1e-3)));
           }
           break;
         }
@@ -283,18 +347,24 @@ export class GwentISMCTS {
         let availActions;
         if (node === root) {
           availActions = rootCands;
-        } else {
-          const edgeLimit = Math.max(this.maxChildren * 2, 16);
-          for (const a of simLegal) {
-            if (!node.edges.has(a) && node.edges.size < edgeLimit) {
-              const pr = node.priors !== null ? Number(node.priors[a]) : 1.0 / Math.max(1, simLegal.length);
-              node.edges.set(a, createEdge(Math.max(pr, 1e-3)));
+        } else if (node.priors !== null) {
+          const candActions = simLegal
+            .slice()
+            .sort((a, b) => node.priors[b] - node.priors[a])
+            .slice(0, this.maxChildren);
+          if (simLegal.includes(PASS_ACTION) && !candActions.includes(PASS_ACTION) && simEng.sub_phase === 'PLAY') {
+            candActions.push(PASS_ACTION);
+          }
+          for (const a of candActions) {
+            if (!node.edges.has(a)) {
+              node.edges.set(a, createEdge(Math.max(Number(node.priors[a]), 1e-3)));
             }
           }
-          availActions = simLegal.filter((a) => node.edges.has(a));
-          if (availActions.length === 0) {
-            availActions = simLegal.slice(0, this.maxChildren);
-            for (const a of availActions) {
+          availActions = candActions;
+        } else {
+          availActions = simLegal.slice(0, this.maxChildren);
+          for (const a of availActions) {
+            if (!node.edges.has(a)) {
               node.edges.set(a, createEdge(1.0 / Math.max(1, availActions.length)));
             }
           }
@@ -351,6 +421,9 @@ export class GwentISMCTS {
         const e = pNode.edges.get(pAct);
         e.visits += 1;
         e.valueSum += leafVal;
+        pNode.visits += 1;
+        pNode.valueSum += leafVal;
+        pNode.valueEst = pNode.valueSum / pNode.visits;
       }
       simsDone += 1;
     }

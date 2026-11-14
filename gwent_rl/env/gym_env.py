@@ -178,6 +178,8 @@ class GwentSingleAgentEnv(_BaseEnv):
             "scores": list(self.engine.scores),
             "gems": list(self.engine.gems),
             "round": self.engine.round,
+            "base_reward": float(base_reward),
+            "shaping_reward": float(shaping_reward),
         }
         return obs_dict, float(reward), done, False, info
 

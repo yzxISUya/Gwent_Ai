@@ -379,6 +379,7 @@ def train_masked_ppo(
     actions_buf = torch.zeros((num_steps, num_envs), dtype=torch.long, device=device)
     logprobs_buf = torch.zeros((num_steps, num_envs), dtype=torch.float32, device=device)
     rewards_buf = torch.zeros((num_steps, num_envs), dtype=torch.float32, device=device)
+    base_rewards_buf = torch.zeros((num_steps, num_envs), dtype=torch.float32, device=device)
     dones_buf = torch.zeros((num_steps, num_envs), dtype=torch.float32, device=device)
     values_buf = torch.zeros((num_steps, num_envs), dtype=torch.float32, device=device)
 
@@ -478,7 +479,7 @@ def train_masked_ppo(
 
             _step_opponents_batched(envs, opp_members, opp_model_cache, hidden_dim, num_blocks, device, seed + step)
 
-            obs_np, mask_np, rew_np, done_np = [], [], [], []
+            obs_np, mask_np, rew_np, base_rew_np, done_np = [], [], [], [], []
             need_post_reset_opp = False
             for i, env in enumerate(envs):
                 d, r, done, _, info = env.finalize_step(prev_pots[i])
@@ -491,6 +492,7 @@ def train_masked_ppo(
                     env.reset_agent_only()
                     need_post_reset_opp = True
                 rew_np.append(r)
+                base_rew_np.append(float(info.get("base_reward", r)))
                 done_np.append(1.0 if done else 0.0)
 
             if need_post_reset_opp:
@@ -502,15 +504,18 @@ def train_masked_ppo(
                 mask_np.append(d["action_mask"])
 
             rewards_buf[step] = torch.tensor(rew_np, dtype=torch.float32, device=device)
+            base_rewards_buf[step] = torch.tensor(base_rew_np, dtype=torch.float32, device=device)
             next_obs = torch.tensor(np.array(obs_np), dtype=torch.float32, device=device)
             next_mask = torch.tensor(np.array(mask_np), dtype=torch.bool, device=device)
             next_done = torch.tensor(done_np, dtype=torch.float32, device=device)
 
-        # Compute GAE advantages & returns
+        # Compute GAE advantages (shaped for Actor) & unshaped win-value returns (for BCE Critic)
         with torch.no_grad():
             _, _, _, next_value = model.get_action_and_value(next_obs, next_mask)
             advantages = torch.zeros_like(rewards_buf, device=device)
+            v_advantages = torch.zeros_like(base_rewards_buf, device=device)
             lastgaelam = 0.0
+            lastgaelam_v = 0.0
             for t in reversed(range(num_steps)):
                 if t == num_steps - 1:
                     nextnonterminal = 1.0 - next_done
@@ -520,7 +525,9 @@ def train_masked_ppo(
                     nextvalues = values_buf[t + 1]
                 delta = rewards_buf[t] + gamma * nextvalues * nextnonterminal - values_buf[t]
                 advantages[t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
-            returns = advantages + values_buf
+                delta_v = base_rewards_buf[t] + gamma * nextvalues * nextnonterminal - values_buf[t]
+                v_advantages[t] = lastgaelam_v = delta_v + gamma * gae_lambda * nextnonterminal * lastgaelam_v
+            returns = v_advantages + values_buf
 
         b_obs = obs_buf.reshape((-1, OBS_DIM))
         b_mask = mask_buf.reshape((-1, ACTION_DIM))

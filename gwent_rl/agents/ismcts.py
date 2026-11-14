@@ -116,9 +116,14 @@ class ISNode:
     turn: int
     expanded: bool = False
     value_est: float = 0.0
+    value_sum: float = 0.0
+    visits: int = 0
     priors: Optional[np.ndarray] = None
     edges: Dict[int, ISEdge] = field(default_factory=dict)
     children: Dict[int, "ISNode"] = field(default_factory=dict)
+
+
+_DUMMY_ALL_TRUE_MASK = np.ones(ACTION_DIM, dtype=bool)
 
 
 class GwentISMCTS:
@@ -162,13 +167,37 @@ class GwentISMCTS:
         root_pov: int,
         use_unseen_opp_union: bool = False,
         is_root: bool = False,
+        need_priors: bool = True,
     ) -> Tuple[np.ndarray, float]:
         turn = eng.turn
+        if not need_priors:
+            if (not is_root) and (self.spectator_eval_fn is not None):
+                obs0 = eng.encode_observation(0)
+                obs1 = eng.encode_observation(1)
+                p0_prob = float(self.spectator_eval_fn(obs0, obs1))
+                val_p0 = 2.0 * p0_prob - 1.0
+                val_root = val_p0 if root_pov == 0 else -val_p0
+            else:
+                _, v_root = self.eval_fn(eng.encode_observation(root_pov), _DUMMY_ALL_TRUE_MASK)
+                _, v_opp = self.eval_fn(eng.encode_observation(1 - root_pov), _DUMMY_ALL_TRUE_MASK)
+                val_root = 0.5 * (float(v_root) - float(v_opp))
+            return np.zeros(ACTION_DIM, dtype=np.float32), val_root
+
         obs = eng.encode_observation(turn)
         mask = np.array(eng.get_legal_mask(), dtype=bool)
         if use_unseen_opp_union and turn != root_pov and eng.sub_phase == "PLAY":
             unseen = compute_opp_unseen_counts(eng, root_pov)
+            tot_u = sum(unseen)
+            h_len = len(eng.players[turn].hand)
+            d_len = max(0, tot_u - h_len)
+            h_scale = (h_len / float(tot_u)) * 0.2 if tot_u > 0 else 0.0
+            d_scale = (d_len / float(tot_u)) * 0.2 if tot_u > 0 else 0.0
+            b0 = 93
+            b1 = 93 + NUM_CARDS
             for cidx, cnt in enumerate(unseen):
+                if tot_u > 0:
+                    obs[b0 + cidx] = cnt * h_scale
+                    obs[b1 + cidx] = cnt * d_scale
                 if cnt > 0:
                     c = CARDS_BY_IDX[cidx]
                     if c["id"] == "commander-s-horn":
@@ -184,11 +213,19 @@ class GwentISMCTS:
         probs, val_turn = self.eval_fn(obs, mask)
         if (not is_root) and (self.spectator_eval_fn is not None):
             # Inside determinized simulation world `sim_eng`, both hands are part of the sampled world.
-            obs0 = obs if turn == 0 else eng.encode_observation(0)
-            obs1 = obs if turn == 1 else eng.encode_observation(1)
+            obs0 = eng.encode_observation(0)
+            obs1 = eng.encode_observation(1)
             p0_prob = float(self.spectator_eval_fn(obs0, obs1))
             val_p0 = 2.0 * p0_prob - 1.0
             val_root = val_p0 if root_pov == 0 else -val_p0
+        elif not is_root:
+            # Anti-symmetrize leaf value across both perspectives in `sim_eng` to cancel active-player turn bias
+            if turn == root_pov:
+                _, v_opp = self.eval_fn(eng.encode_observation(1 - root_pov), _DUMMY_ALL_TRUE_MASK)
+                val_root = 0.5 * (float(val_turn) - float(v_opp))
+            else:
+                _, v_root = self.eval_fn(eng.encode_observation(root_pov), _DUMMY_ALL_TRUE_MASK)
+                val_root = 0.5 * (float(v_root) - float(val_turn))
         else:
             val_root = float(val_turn) if turn == root_pov else -float(val_turn)
         return probs, val_root
@@ -219,7 +256,21 @@ class GwentISMCTS:
                 probs_out[a] = float(root_probs[a])
             return sorted_legal[0], probs_out, root_val, {"sims": 0, "nn_evals": nn_evals, "elapsed_ms": 0.0}
 
-        root = ISNode(turn=root_pov, expanded=True, value_est=root_val, priors=root_probs)
+        # De-bias root value baseline using a non-cheating determinized opponent value check when spectator net is absent
+        if self.spectator_eval_fn is None:
+            sim_root = determinize_engine(engine, root_pov, self.rng)
+            _, opp_v0 = self.eval_fn(sim_root.encode_observation(1 - root_pov), _DUMMY_ALL_TRUE_MASK)
+            root_val = 0.5 * (float(root_val) - float(opp_v0))
+            nn_evals += 1
+
+        root = ISNode(
+            turn=root_pov,
+            expanded=True,
+            value_est=root_val,
+            value_sum=root_val,
+            visits=1,
+            priors=root_probs,
+        )
         root_cands = sorted_legal[: self.max_children]
         if PASS_ACTION in legal and PASS_ACTION not in root_cands and engine.sub_phase == "PLAY":
             root_cands.append(PASS_ACTION)
@@ -248,8 +299,10 @@ class GwentISMCTS:
                     break
 
                 if depth >= self.max_depth:
-                    _, leaf_val = self._evaluate_node(sim_eng, root_pov, use_unseen_opp_union=False)
-                    nn_evals += 1
+                    _, leaf_val = self._evaluate_node(
+                        sim_eng, root_pov, use_unseen_opp_union=False, need_priors=False
+                    )
+                    nn_evals += 1 if self.spectator_eval_fn is not None else 2
                     break
 
                 sim_legal = sim_eng.get_legal_actions()
@@ -259,30 +312,38 @@ class GwentISMCTS:
 
                 if not node.expanded:
                     probs, leaf_val = self._evaluate_node(sim_eng, root_pov, use_unseen_opp_union=True)
-                    nn_evals += 1
+                    nn_evals += 1 if self.spectator_eval_fn is not None else 2
                     node.expanded = True
                     node.value_est = leaf_val
+                    node.value_sum = leaf_val
+                    node.visits = 1
                     node.priors = probs
                     cand_actions = sorted(sim_legal, key=lambda a: float(probs[a]), reverse=True)[: self.max_children]
                     if PASS_ACTION in sim_legal and PASS_ACTION not in cand_actions and sim_eng.sub_phase == "PLAY":
                         cand_actions.append(PASS_ACTION)
                     for a in cand_actions:
-                        node.edges[a] = ISEdge(prior=float(probs[a]))
+                        node.edges[a] = ISEdge(prior=max(float(probs[a]), 1e-3))
                     break
 
                 if node is root:
                     avail_actions = root_cands
                 else:
-                    # Dynamically include legal actions for the current determinization using cached union priors
-                    for a in sim_legal:
-                        if a not in node.edges and len(node.edges) < max(self.max_children * 2, 16):
-                            pr = float(node.priors[a]) if node.priors is not None else 1.0 / max(1, len(sim_legal))
-                            node.edges[a] = ISEdge(prior=max(pr, 1e-3))
-                    avail_actions = [a for a in sim_legal if a in node.edges]
-                    if not avail_actions:
+                    # Consistently select top-K legal actions for the current determinization ranked by union priors
+                    if node.priors is not None:
+                        cand_actions = sorted(
+                            sim_legal, key=lambda a: float(node.priors[a]), reverse=True
+                        )[: self.max_children]
+                        if PASS_ACTION in sim_legal and PASS_ACTION not in cand_actions and sim_eng.sub_phase == "PLAY":
+                            cand_actions.append(PASS_ACTION)
+                        for a in cand_actions:
+                            if a not in node.edges:
+                                node.edges[a] = ISEdge(prior=max(float(node.priors[a]), 1e-3))
+                        avail_actions = cand_actions
+                    else:
                         avail_actions = sim_legal[: self.max_children]
                         for a in avail_actions:
-                            node.edges[a] = ISEdge(prior=1.0 / max(1, len(avail_actions)))
+                            if a not in node.edges:
+                                node.edges[a] = ISEdge(prior=1.0 / max(1, len(avail_actions)))
 
                 is_root_player = (sim_eng.turn == root_pov)
                 for a in avail_actions:
@@ -327,6 +388,9 @@ class GwentISMCTS:
                 e = p_node.edges[p_act]
                 e.visits += 1
                 e.value_sum += leaf_val
+                p_node.visits += 1
+                p_node.value_sum += leaf_val
+                p_node.value_est = p_node.value_sum / p_node.visits
             sims_done += 1
 
         # Build visit-count policy distribution and choose best root action
