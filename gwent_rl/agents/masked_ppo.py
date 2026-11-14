@@ -385,13 +385,7 @@ def train_masked_ppo(
     for i, env in enumerate(envs):
         member = league.sample_opponent()
         opp_members.append(member)
-        env.engine.reset(
-            seed=env.rng.rand_int(2**31 - 1),
-            preset0=env.preset_ids[env.rng.rand_int(len(env.preset_ids))],
-            preset1=env.preset_ids[env.rng.rand_int(len(env.preset_ids))],
-        )
-        env.agent_player = env.rng.rand_int(2)
-        env.episode_Count += 1
+        env.reset_agent_only()
 
     _step_opponents_batched(envs, opp_members, opp_model_cache, hidden_dim, num_blocks, device, seed)
     next_obs = torch.tensor(np.array([e._get_obs()["obs"] for e in envs]), dtype=torch.float32, device=device)
@@ -494,13 +488,7 @@ def train_masked_ppo(
                     learner_won = None if w is None else (w == env.agent_player)
                     league.record_result(opp_members[i].name, learner_won, k_factor=6.0 if warm_started else 8.0)
                     opp_members[i] = league.sample_opponent()
-                    env.engine.reset(
-                        seed=env.rng.rand_int(2**31 - 1),
-                        preset0=env.preset_ids[env.rng.rand_int(len(env.preset_ids))],
-                        preset1=env.preset_ids[env.rng.rand_int(len(env.preset_ids))],
-                    )
-                    env.agent_player = env.rng.rand_int(2)
-                    env.episode_Count += 1
+                    env.reset_agent_only()
                     need_post_reset_opp = True
                 rew_np.append(r)
                 done_np.append(1.0 if done else 0.0)

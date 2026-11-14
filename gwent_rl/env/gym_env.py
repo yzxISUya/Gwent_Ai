@@ -55,7 +55,7 @@ class GwentSingleAgentEnv(_BaseEnv):
         self.gamma = gamma
         self.engine = GwentEngine(seed=seed)
         self.agent_player: int = 0
-        self.episode_Count: int = 0
+        self.episode_count: int = 0
 
         if isinstance(opponent, str):
             bot = HeuristicAI(difficulty=opponent, seed=seed + 777)
@@ -93,15 +93,24 @@ class GwentSingleAgentEnv(_BaseEnv):
         card_diff = (len(self.engine.players[p].hand) - len(self.engine.players[opp].hand)) * card_w
         return gem_diff + card_diff
 
-    def reset(
+    @property
+    def episode_Count(self) -> int:
+        return self.episode_count
+
+    @episode_Count.setter
+    def episode_Count(self, val: int) -> None:
+        self.episode_count = val
+
+    def reset_agent_only(
         self,
         *,
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
+    ) -> Dict[str, Any]:
+        """Reset engine and randomize match parameters without stepping opponent turns yet (used for batched rollout)."""
         if seed is not None:
             self.rng = RngState(seed)
-        self.episode_Count += 1
+        self.episode_count += 1
 
         p0 = (options or {}).get("preset0") or self.preset_ids[self.rng.rand_int(len(self.preset_ids))]
         p1 = (options or {}).get("preset1") or self.preset_ids[self.rng.rand_int(len(self.preset_ids))]
@@ -109,11 +118,19 @@ class GwentSingleAgentEnv(_BaseEnv):
 
         game_seed = self.rng.rand_int(2**31 - 1)
         self.engine.reset(seed=game_seed, preset0=p0, preset1=p1)
+        return {"agent_player": self.agent_player, "preset0": p0, "preset1": p1}
 
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
+        info = self.reset_agent_only(seed=seed, options=options)
         # Advance opponent turns until it's agent_player's turn or game over
         self._run_opponent_until_agent()
         obs_dict = self._get_obs()
-        return obs_dict, {"agent_player": self.agent_player, "preset0": p0, "preset1": p1}
+        return obs_dict, info
 
     def _run_opponent_until_agent(self) -> None:
         while not self.engine.done and self.engine.turn != self.agent_player:
