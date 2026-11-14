@@ -89,15 +89,16 @@ function evaluateHeuristicDistribution(eng, difficulty = 'hard') {
   const legal = eng.getLegalActions();
   const scores = new Map();
 
+  let bestAction = legal[0];
   if (legal.length === 1) {
     scores.set(legal[0], 10.0);
   } else {
-    const chosen = bot.selectAction(eng);
+    bestAction = bot.selectAction(eng);
     for (const a of legal) {
       const sim = eng.clone();
       sim.step(a);
       let v = bot.evaluateState(sim, p);
-      if (a === chosen) v += 18.0;
+      if (a === bestAction) v += 18.0;
       scores.set(a, v);
     }
   }
@@ -115,7 +116,6 @@ function evaluateHeuristicDistribution(eng, difficulty = 'hard') {
 
   const rawStateVal = bot.evaluateState(eng, p);
   const value = Math.tanh(rawStateVal / 45.0);
-  const bestAction = bot.selectAction(eng);
   return { bestAction, probs, value };
 }
 
@@ -171,7 +171,7 @@ self.onmessage = async (e) => {
               maxChildren: 5,
               fpuReduction: 0.15,
               skipProbThreshold: 0.96,
-              seed: 2026 + (eng.history?.length || 0),
+              seed: (2026 + cachedHistory.length * 131 + eng.rng.state) >>> 0,
             },
           );
           const searchRes = await mcts.search(eng, 450);
