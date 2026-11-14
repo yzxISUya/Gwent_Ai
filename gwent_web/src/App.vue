@@ -158,10 +158,14 @@
         <!-- Player 0 Rows: Close, Ranged, Siege -->
         <div class="rows-group player-rows">
           <div
-            v-for="rKey in ['close', 'ranged', 'siege']"
+            v-for="(rKey, rIdx) in ['close', 'ranged', 'siege']"
             :key="'p0-' + rKey"
             class="battle-row"
-            :class="{ weathered: isRowWeathered(rKey) }"
+            :class="{
+              weathered: isRowWeathered(rKey),
+              selectable: pendingHornSelect && isHumanTurn && view.legalMask[hornRowOffset + rIdx],
+            }"
+            @click="onClickPlayerRow(rIdx)"
           >
             <div class="row-meta">
               <span class="row-title">{{ rowLabel(rKey) }}</span>
@@ -228,6 +232,9 @@
               <template v-else-if="view.subPhase === 'MULLIGAN'">
                 [开局调度] P{{ view.turn }} 剩余可换 {{ view.players[view.turn].mulligan_left }} 张牌（点击卡牌更换，或点击右侧结束换牌）
               </template>
+              <template v-else-if="pendingHornSelect">
+                [指挥官号角] 请点击右侧目标行按钮，或直接点击己方对应战场行（近战/远程/攻城）放置号角
+              </template>
               <template v-else>
                 手牌与战术动作（点击卡牌直接打出）
               </template>
@@ -238,7 +245,8 @@
                 v-for="(rKey, rIdx) in ['close', 'ranged', 'siege']"
                 :key="'horn-' + rKey"
                 v-show="view.legalMask[hornRowOffset + rIdx]"
-                class="btn small accent-outline"
+                class="btn small"
+                :class="pendingHornSelect ? 'primary' : 'accent-outline'"
                 @click="commitHumanAction(hornRowOffset + rIdx)"
               >
                 指挥官号角 → {{ rowLabel(rKey) }}
@@ -288,7 +296,7 @@
                 hero: inst.card._is_hero,
                 special: inst.card.type !== 'unit',
                 playable: isHumanTurn && isHandCardPlayable(inst.card),
-                suggested: xray.bestAction === inst.card.idx,
+                suggested: isCardSuggested(inst.card),
               }"
               :disabled="!isHumanTurn || !isHandCardPlayable(inst.card)"
               @click="onClickHandCard(inst.card)"
@@ -454,6 +462,7 @@ const aiModel1 = ref('onnx:ppo-v1');
 const seedInput = ref(20261106);
 const autoPlay = ref(false);
 const spectatorEnabled = ref(false);
+const pendingHornSelect = ref(false);
 
 let engine = new GwentEngine(seedInput.value, preset0.value, preset1.value);
 const actionHistory = ref([]);
@@ -630,6 +639,14 @@ function isHandCardPlayable(card) {
   return view.legalMask[card.idx];
 }
 
+function isCardSuggested(card) {
+  if (xray.bestAction === null) return false;
+  if (card.id === 'commander-s-horn' && view.subPhase === 'PLAY') {
+    return xray.bestAction >= HORN_ROW_OFFSET && xray.bestAction < HORN_ROW_OFFSET + 3;
+  }
+  return xray.bestAction === card.idx;
+}
+
 function canSelectDecoyTarget(cardIdx) {
   return isHumanTurn.value && view.subPhase === 'DECOY' && view.legalMask[cardIdx];
 }
@@ -640,6 +657,14 @@ function onClickBoardUnit(cardIdx) {
   }
 }
 
+function onClickPlayerRow(rIdx) {
+  if (!isHumanTurn.value || !pendingHornSelect.value) return;
+  const act = HORN_ROW_OFFSET + rIdx;
+  if (view.legalMask[act]) {
+    commitHumanAction(act);
+  }
+}
+
 function onClickHandCard(card) {
   if (!isHumanTurn.value) return;
   if (view.subPhase === 'MULLIGAN') {
@@ -647,19 +672,23 @@ function onClickHandCard(card) {
     return;
   }
   if (card.id === 'commander-s-horn') {
-    for (let i = 0; i < 3; i++) {
-      if (view.legalMask[HORN_ROW_OFFSET + i]) {
-        commitHumanAction(HORN_ROW_OFFSET + i);
-        return;
-      }
+    const legalHornRows = [0, 1, 2].filter((i) => view.legalMask[HORN_ROW_OFFSET + i]);
+    if (legalHornRows.length === 1) {
+      commitHumanAction(HORN_ROW_OFFSET + legalHornRows[0]);
+    } else if (legalHornRows.length > 1) {
+      pendingHornSelect.value = !pendingHornSelect.value;
     }
-  } else if (view.legalMask[card.idx]) {
+    return;
+  }
+  pendingHornSelect.value = false;
+  if (view.legalMask[card.idx]) {
     commitHumanAction(card.idx);
   }
 }
 
 function applyStep(action, actorTag = '') {
   if (engine.done) return;
+  pendingHornSelect.value = false;
   const p = engine.turn;
   const label = engine.actionLabel(action, 'zh');
   matchLogs.value.push(`[R${engine.round} · P${p}${actorTag}] ${label}`);
@@ -754,6 +783,7 @@ function onSpectatorToggle() {
 
 function onModeChange() {
   autoPlay.value = false;
+  pendingHornSelect.value = false;
   if (autoTimer) {
     clearTimeout(autoTimer);
     autoTimer = null;
@@ -770,6 +800,7 @@ function onModeChange() {
 function startNewGame(newSeed = null) {
   if (newSeed !== null) seedInput.value = newSeed;
   if (autoTimer) clearTimeout(autoTimer);
+  pendingHornSelect.value = false;
   engine.reset(seedInput.value, preset0.value, preset1.value);
   actionHistory.value = [];
   matchLogs.value = [`—— 对局开始 (Seed: ${seedInput.value}) ——`];
